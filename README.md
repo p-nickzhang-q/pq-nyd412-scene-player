@@ -194,6 +194,7 @@ params/missingAssets.json   15 个缺素材场景的 526 个缺失文件名
 params/names.zh.json        {场景id: 中文名}，供重新生成时复用
 params/plugins-entry.txt    可直接粘进 www/js/plugins.js 的整行条目
 tools/scan_game.py          扫描游戏重新生成上面这些参数
+tools/fix-unlock-events.py   修正作弊菜单的 unlockEvents（剔除缺素材 id / 装包后恢复）
 CHANGELOG.md                更新日志
 ```
 
@@ -222,7 +223,25 @@ python3 tools/scan_game.py "/path/to/农民的任务/www" \
 v1.0.0 的 bug（`Window_Selectable.initialize` 内部会先调 `maxItems()`，而当时 `_data` 还没初始化），v1.0.1 已修，请用最新版。
 
 **Q：作弊菜单里选到缺素材的场景照样报错？**
-对，`VirtualacgPC` 的 `unlockEvents` 里也含这 15 个 id，那个菜单不走本插件的素材检查。要么手工把 `unlockEvents` 里的 `295,297,298,497,1250,1251,1254,1491,1498,1644,1823,1829,1833,1837,1838` 删掉，要么装了 Spicy Mod 再用。
+对，`VirtualacgPC` 的 `unlockEvents` 里也含这 15 个 id，那个菜单不走本插件的素材检查，选到就是 `Loading Error`。
+
+推荐把 `unlockEvents` 收窄到 **147 个**（`162 - 15`），仓库里的脚本可以直接做：
+
+```bash
+# 先看会改什么
+python3 tools/fix-unlock-events.py "/path/to/农民的任务/www" --dry-run
+# 执行（自动备份 plugins.js.bak-<时间戳>，改完回读校验）
+python3 tools/fix-unlock-events.py "/path/to/农民的任务/www"
+# 以后装了 Spicy Mod，一键把 162 个全加回来
+python3 tools/fix-unlock-events.py "/path/to/农民的任务/www" --restore
+```
+
+脚本默认从 `ScenePlayer.missingAssets` 读取要剔除的 id（没装 ScenePlayer 时用 `--drop` 指定），可重复执行（幂等）。
+
+于是两个入口的分工是刻意的：
+
+- **ScenePlayer 列表（F7）**：162 个全列出，缺素材的标 ⚠ 并在播放/连播时跳过 —— 让你知道有哪些场景存在；
+- **作弊菜单「解锁公共事件」**：147 个，不含缺素材场景 —— 因为那个菜单没有素材检查能力。
 
 **Q：自动连播到某个场景停了？**
 ① 该场景缺素材被跳过、且后面没有可播的了 → 插件会提示「自动连播已停止」；② 场景里有需要你操作的选项 —— `F10` 的自动推进**不会替你选选项**，这是刻意设计。

@@ -8,6 +8,10 @@
   `names.zh.json`（中文名映射）、`plugins-entry.txt`（可直接粘进 `www/js/plugins.js` 的整行）。
 - 新增 `SCENES.md`：162 个场景对照表（id / 中文名 / 原名 / 指令数 / 首句 / 缺素材）。
 - 仓库名改为 `pq-nyd412-scene-player`。
+- 新增 `tools/fix-unlock-events.py`：修正作弊菜单（`VirtualacgPC`）的 `unlockEvents`，
+  剔除缺素材的场景 id（162 -> 147），支持 `--dry-run` / `--restore` / `--drop`；
+  自动备份（同一秒多次运行也不会互相覆盖）、写入后回读校验、可重复执行。
+  已在副本上验证 147 -> 162 -> 147 往返后与目标文件逐字节一致。
 
 ## v1.1.0
 
