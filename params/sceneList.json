@@ -5,6 +5,96 @@
     "ZivaScene01"
   ],
   [
+    13,
+    "Frida · 调情",
+    "FridaFlirting"
+  ],
+  [
+    15,
+    "Shakala · 事件01",
+    "ShakalaEvent01"
+  ],
+  [
+    16,
+    "Shakala · 事件02",
+    "ShakalaEvent02"
+  ],
+  [
+    17,
+    "Shakala · 事件03",
+    "ShakalaEvent03"
+  ],
+  [
+    18,
+    "Erevi · 支配01",
+    "EreviDom01"
+  ],
+  [
+    39,
+    "Maghda × Dolf 01",
+    "MaghdaAndDolf01"
+  ],
+  [
+    40,
+    "Maghda × Dolf 02",
+    "MaghdaAndDolf02"
+  ],
+  [
+    41,
+    "Maghda × Dolf 03",
+    "MaghdaAndDolf03"
+  ],
+  [
+    44,
+    "Erevi · 床上速战",
+    "EreviQuickyInBed"
+  ],
+  [
+    46,
+    "Erevi · 黑色礼服",
+    "EreviBlackDress"
+  ],
+  [
+    63,
+    "Mia · 接吻",
+    "MiaKiss"
+  ],
+  [
+    64,
+    "Mia · 胸部",
+    "MiaTits"
+  ],
+  [
+    65,
+    "Mia · 私处",
+    "MiaPussy"
+  ],
+  [
+    66,
+    "Mia · 口交",
+    "MiaBlowJob"
+  ],
+  [
+    67,
+    "Shakala · 婚礼 上",
+    "ShakalaWeddingPart1"
+  ],
+  [
+    85,
+    "被抓偷窥",
+    "CaughtPeeking"
+  ],
+  [
+    87,
+    "Frida · 床上 H（未孕）",
+    "FridaSexInBedNotPregnant"
+  ],
+  [
+    88,
+    "Frida · 床上 H（怀孕）",
+    "FridaSexInBedPregnant"
+  ],
+  [
     103,
     "Victoria · 剧情01",
     "VictoriaScene01"
@@ -20,14 +110,44 @@
     "VictoriaScene03"
   ],
   [
+    115,
+    "Urakhand × Caleah",
+    "UrakhandCaleah"
+  ],
+  [
     117,
     "Grug · 受伤",
     "GrugWoundedScene"
   ],
   [
+    121,
+    "Erevi · 床上",
+    "EreviInBed"
+  ],
+  [
     125,
     "神殿 · 入会仪式",
     "TempleInitiationScene"
+  ],
+  [
+    127,
+    "Urakhand × Caleah（回想）",
+    "UrakhandCaleahRelive"
+  ],
+  [
+    129,
+    "地穴 · 白天",
+    "CryptDaytime"
+  ],
+  [
+    130,
+    "墓园 · 夜晚",
+    "CemeteryAtNight"
+  ],
+  [
+    139,
+    "Victoria · 怀孕 H01",
+    "VictoriaSexPreg01"
   ],
   [
     145,
@@ -50,6 +170,21 @@
     "VictoriaScene03SpiritPotion"
   ],
   [
+    157,
+    "水蛭袭击",
+    "LeachAttack"
+  ],
+  [
+    160,
+    "Caleah · 初次约会",
+    "CaleahFirstDate"
+  ],
+  [
+    163,
+    "Caleah · H02",
+    "CaleahSex02"
+  ],
+  [
     165,
     "Frida · H01A",
     "FridaSexScene01A"
@@ -63,6 +198,61 @@
     167,
     "Frida · H 好宠物",
     "FridaSexSceneGoodPet"
+  ],
+  [
+    168,
+    "Erevi · 支配 H",
+    "EreviDominationSex"
+  ],
+  [
+    169,
+    "Erevi · 灵药受孕",
+    "EreviCreateChildSpirit"
+  ],
+  [
+    192,
+    "Victoria · 来访",
+    "VictoriasVisit"
+  ],
+  [
+    202,
+    "龙 · 遭遇",
+    "DragonEncounter"
+  ],
+  [
+    203,
+    "龙 · 战后",
+    "DragonAfterCombat"
+  ],
+  [
+    214,
+    "Caleah × Ziva H（大场景）",
+    "CaleahZivaSex"
+  ],
+  [
+    228,
+    "Mia · 林中相遇",
+    "MiaMeetInForest"
+  ],
+  [
+    232,
+    "Mia · 床上 H1",
+    "MiaSexInBed1"
+  ],
+  [
+    235,
+    "Mia · 与祖母对峙",
+    "MiaGrandmaConfrontation"
+  ],
+  [
+    237,
+    "龙 · 灵药 H1",
+    "DragonSex1SpiritPotion"
+  ],
+  [
+    238,
+    "龙 · 灵药 H2",
+    "DragonSex2SpiritPotion"
   ],
   [
     255,
@@ -90,6 +280,46 @@
     "AliceInLibrarySexScene"
   ],
   [
+    264,
+    "Alice × Johan 桌边",
+    "AliceAndJohanByTable"
+  ],
+  [
+    266,
+    "Alice · 约会",
+    "AliceDate"
+  ],
+  [
+    267,
+    "Alice · 酒馆 H",
+    "AliceSexInTavern"
+  ],
+  [
+    268,
+    "Alice · 房间 灵药",
+    "AliceInHerRoomSpiritPotion"
+  ],
+  [
+    270,
+    "Alice · 试衣间 灵药",
+    "AliceInBoothSpiritPotion"
+  ],
+  [
+    279,
+    "归还传送石",
+    "ReturnWaystoneTablet"
+  ],
+  [
+    291,
+    "Victoria × 女儿",
+    "VictoriaAndDaughter"
+  ],
+  [
+    293,
+    "女儿 · 去游泳",
+    "DaughterGoForASwim"
+  ],
+  [
     295,
     "女儿 · 床上1",
     "DaughterInBedScene1"
@@ -105,9 +335,69 @@
     "DaughterInBedScene3"
   ],
   [
+    301,
+    "Erevi · 床上速战2",
+    "EreviQuickyInBed2"
+  ],
+  [
+    302,
+    "Erevi · 床上2",
+    "EreviInBed2"
+  ],
+  [
+    304,
+    "Erevi × 女儿",
+    "EreviAndDaughter"
+  ],
+  [
+    308,
+    "与女儿组队",
+    "TeamUpWithDaugther"
+  ],
+  [
+    309,
+    "Victoria × 女儿（灵药）",
+    "VictoriaAndDaughterSpirit"
+  ],
+  [
+    323,
+    "Rosy · 强制口交",
+    "RosyForcedBJ"
+  ],
+  [
+    333,
+    "Rosy · 面包店02",
+    "RosyInBakeryEvents2"
+  ],
+  [
+    336,
+    "Liandra × 地精",
+    "LiandraAndGrumpkins"
+  ],
+  [
+    338,
+    "离开地精洞",
+    "ExitGrumpkinCave"
+  ],
+  [
     340,
     "Liandra · H2",
     "LiandraSexScene2"
+  ],
+  [
+    341,
+    "Liandra · 怀孕 H",
+    "LiandraPregSex"
+  ],
+  [
+    345,
+    "女儿 · 去游泳（灵药）",
+    "DaughterGoForASwimSpiritPotion"
+  ],
+  [
+    346,
+    "Liandra × 地精（灵药）",
+    "LiandraAndGrumpkinsSpiritPotion"
   ],
   [
     347,
@@ -118,6 +408,11 @@
     357,
     "Hilde · 新婚夜",
     "HildeWeddingNightScene"
+  ],
+  [
+    359,
+    "Hilde · 沐浴",
+    "HildeBathing"
   ],
   [
     360,
@@ -145,14 +440,44 @@
     "HildeInTentScene3B"
   ],
   [
+    378,
+    "Frida · 帐篷口交（灵药）",
+    "FridaBlowjobInTentSpiritPotion"
+  ],
+  [
     379,
     "Hilde · 帐篷3C",
     "HildeInTentScene3C"
   ],
   [
+    386,
+    "Maghda × Dolf 04",
+    "MaghdaAndDolf04"
+  ],
+  [
+    395,
+    "Maghda · 怀孕 H1",
+    "MaghdaPregSex1"
+  ],
+  [
+    397,
+    "Maghda · 怀孕 H2",
+    "MaghdaPregSex2"
+  ],
+  [
+    400,
+    "Maghda · 怀孕 H3",
+    "MaghdaPregSex3"
+  ],
+  [
     415,
     "Victoria · 红色内衣",
     "VictoriaRedLingerieScene"
+  ],
+  [
+    416,
+    "探望 Victoria（产后）",
+    "VisitVictoriaAfterBirth"
   ],
   [
     452,
@@ -175,14 +500,74 @@
     "SequoiaSexScene2"
   ],
   [
+    482,
+    "观看地精女儿 阶段1",
+    "WatchGDStage1"
+  ],
+  [
+    483,
+    "观看地精女儿 阶段2",
+    "WatchGDStage2"
+  ],
+  [
+    487,
+    "地精女儿 · 剧情01",
+    "GDScene01"
+  ],
+  [
+    488,
+    "地精女儿 · 剧情02",
+    "GDScene02"
+  ],
+  [
+    489,
+    "地精女儿 · 剧情03",
+    "GDScene03"
+  ],
+  [
+    496,
+    "骑士袭击",
+    "KnightsAttack"
+  ],
+  [
     497,
     "Shakala · GD H01",
     "ShakalaGDSexScene01"
   ],
   [
+    503,
+    "Shakala · 林中 H",
+    "ShakalaSexInForest"
+  ],
+  [
     504,
     "Shakala · 婚礼双人",
     "ShakalaWeddingDuoScene"
+  ],
+  [
+    514,
+    "蜘蛛娘 · 阶段0",
+    "SpiderGirlStage0"
+  ],
+  [
+    515,
+    "蜘蛛娘 · 阶段1",
+    "SpiderGirlStage1"
+  ],
+  [
+    518,
+    "蜘蛛娘 · 杂交 H",
+    "SpiderGirlHybridSex"
+  ],
+  [
+    519,
+    "蜘蛛娘 · 化人",
+    "SpiderGirlChangeToHuman"
+  ],
+  [
+    520,
+    "被蜘蛛娘抓住",
+    "CaughtBySpiderGirl"
   ],
   [
     521,
@@ -195,6 +580,21 @@
     "SpiderCaveScene3B"
   ],
   [
+    530,
+    "蝙蝠饲养者 · 沙发 H",
+    "BatBreederOnCouchSex"
+  ],
+  [
+    532,
+    "地牢01 · 解放BB",
+    "DST01BBSetFree"
+  ],
+  [
+    533,
+    "地牢04 · 解放BB",
+    "DST04BBSetFree"
+  ],
+  [
     535,
     "蜘蛛洞 · 剧情5",
     "SpiderCaveScene5"
@@ -205,9 +605,109 @@
     "SpiderCaveScene4"
   ],
   [
+    546,
+    "Zsofia · 墓园 H",
+    "ZsofiaSexInCemetery"
+  ],
+  [
+    651,
+    "Oksana · 沐浴贿赂Oliver",
+    "OksanaBathingBribeOliver"
+  ],
+  [
+    652,
+    "Erevi · 红色内衣（灵药）",
+    "EreviRedLingerieSpiritPotion"
+  ],
+  [
+    653,
+    "Erevi · 黑色礼服（灵药）",
+    "EreviBlackDressSpiritPotion"
+  ],
+  [
+    654,
+    "Victoria · 红色内衣 怀孕（灵药）",
+    "VictoriaRedLingeriePregSP"
+  ],
+  [
+    655,
+    "Victoria · 黑色内衣 怀孕（灵药）",
+    "VictoriaBlackLingeriePregSP"
+  ],
+  [
+    656,
+    "Victoria · 白丝 怀孕（灵药）",
+    "VictoriaWhiteStokingsPregSP"
+  ],
+  [
+    669,
+    "吸血鬼受害者 Reanna 3",
+    "VampireVictimReanna3"
+  ],
+  [
+    671,
+    "Adaobi · 礼拜堂 H",
+    "AdaobiSexInChapel"
+  ],
+  [
+    674,
+    "Reanna · 卧室 H",
+    "ReannaSexInBedroom"
+  ],
+  [
+    677,
+    "Zsofia · 卧室来访",
+    "ZsofiaBedroomVisit"
+  ],
+  [
+    678,
+    "Adaobi · 卧室来访",
+    "AdaobiBedroomVisit"
+  ],
+  [
+    683,
+    "Oksana · 神殿 H（灵药）",
+    "OksanaSexInTempleSP"
+  ],
+  [
+    684,
+    "Oksana · 沐浴",
+    "OksanaBathing"
+  ],
+  [
+    685,
+    "地穴 H（灵药·大场景）",
+    "SexInCryptSpiritPotion"
+  ],
+  [
+    686,
+    "Reanna · 军械库口交",
+    "ReannaBJInArmory"
+  ],
+  [
+    687,
+    "Oksana · 地穴 H",
+    "OksanaSexInCrypt"
+  ],
+  [
+    690,
+    "Rosy · 面包店03",
+    "RosyInBakeryEvents3"
+  ],
+  [
+    727,
+    "酒馆 · 掷骰",
+    "TavernPlayDice"
+  ],
+  [
     732,
     "Jenny · 手交",
     "JennyHandJobScene"
+  ],
+  [
+    742,
+    "Jenny · 初次怀孕",
+    "JennysFirstPregnancy"
   ],
   [
     750,
@@ -215,9 +715,99 @@
     "JennyHandJobSceneNoTom"
   ],
   [
+    754,
+    "Tom · 第一次输 下",
+    "TomsFirstLoss Part2"
+  ],
+  [
+    755,
+    "Tom · 第二次输 下",
+    "TomsSecondLoss Part2"
+  ],
+  [
+    756,
+    "Tom · 第三次输 下",
+    "TomsThirdLoss Part2"
+  ],
+  [
+    806,
+    "Ziva · 群体 上",
+    "MassZivaPart1"
+  ],
+  [
+    807,
+    "Alice · 群体 上",
+    "MassAlicePart1"
+  ],
+  [
+    808,
+    "Caleah · 群体 上",
+    "MassCaleahPart1"
+  ],
+  [
+    816,
+    "使魔 · 变身",
+    "FamiliarTransformation"
+  ],
+  [
+    821,
+    "地牢 · 慰藉",
+    "DugeonComfort"
+  ],
+  [
     847,
     "解锁 · 小恶魔口交",
     "UnlockImpBJScene"
+  ],
+  [
+    917,
+    "Caleah · 书库 H",
+    "SexInLibrary Caleah"
+  ],
+  [
+    919,
+    "Mia · 床上 H1（灵药）",
+    "MiaSexInBed1SpiritPotion"
+  ],
+  [
+    978,
+    "Liandra · 花园",
+    "LiandraInGarden"
+  ],
+  [
+    982,
+    "Luthien · 液体愉悦",
+    "LuthienLiquidDelight"
+  ],
+  [
+    983,
+    "Luthien · 小屋椅子上 H",
+    "LuthienSexInCabinChair"
+  ],
+  [
+    988,
+    "Luthien · 不在场证明",
+    "LuthiensAlibi"
+  ],
+  [
+    989,
+    "Liandra · 床上裸体 H",
+    "LiandraSexInBedNaked"
+  ],
+  [
+    990,
+    "Liandra · 卧室 H",
+    "LiandraSexInBedroom"
+  ],
+  [
+    997,
+    "Luthien · 桌上 H",
+    "LuthienSexOnTheTable"
+  ],
+  [
+    998,
+    "Luthien · 胸部按摩",
+    "LuthienBoobMassage"
   ],
   [
     1051,
@@ -225,9 +815,29 @@
     "SexSceneOksanaTempleBedroom3"
   ],
   [
+    1052,
+    "Oksana · 神殿后门 H",
+    "OksanaSexInTempleAnal"
+  ],
+  [
     1056,
     "Oksana · 后门祭坛 H",
     "SexSceneOksanaAnalAlter"
+  ],
+  [
+    1063,
+    "Julia · 第一次游泳",
+    "JuliaFirstSwim"
+  ],
+  [
+    1064,
+    "Julia · 第二次游泳",
+    "JuliaSecondSwim"
+  ],
+  [
+    1065,
+    "Julia · 第三次游泳",
+    "JuliaSwimThirdStage"
   ],
   [
     1069,
@@ -235,9 +845,19 @@
     "JuliaBarnWeddingScene"
   ],
   [
+    1070,
+    "Oksana · 群体 上",
+    "MassOksanaPart1"
+  ],
+  [
     1080,
     "Julia · 床上",
     "JuliaInBedScene"
+  ],
+  [
+    1087,
+    "Lu × Li 三人行",
+    "LuLiThreesome"
   ],
   [
     1151,
@@ -253,6 +873,26 @@
     1157,
     "Obeah · 地上 H",
     "SexSceneObeahOnFloor"
+  ],
+  [
+    1160,
+    "Obeah · 被俘 下",
+    "ObeahCapturedPart2"
+  ],
+  [
+    1164,
+    "Liandra · 井边脱衣",
+    "LiandraStripAtWell"
+  ],
+  [
+    1165,
+    "Liandra · 井边口交",
+    "LiandraBlowjobAtWell"
+  ],
+  [
+    1166,
+    "Liandra · 井边 H",
+    "LiandraSexAtWell"
   ],
   [
     1241,
@@ -345,6 +985,11 @@
     "SexSceneGwynnethInBed"
   ],
   [
+    1259,
+    "Gwynneth · 家中（灵药）",
+    "SpiritPotionGwynnethAtHome"
+  ],
+  [
     1260,
     "Caleah · 酿酒 H",
     "SexSceneWineCaleah"
@@ -400,6 +1045,26 @@
     "SexSceneJennyCheese"
   ],
   [
+    1275,
+    "送莲花提取物",
+    "DeliverLotusExtract"
+  ],
+  [
+    1285,
+    "女儿们玩耍 · 序",
+    "IntroDaughtersPlay"
+  ],
+  [
+    1356,
+    "Maghda × Dolf 05",
+    "MaghdaAndDolf05"
+  ],
+  [
+    1394,
+    "拜访酿酒姑娘们",
+    "VisitWineGirls"
+  ],
+  [
     1411,
     "Julia · 谷仓口交",
     "SexSceneJuliaBJBarn"
@@ -443,6 +1108,11 @@
     1420,
     "Birgitte · 小屋2 内衣",
     "SexSceneBirgitteInLodge2Lingerie"
+  ],
+  [
+    1477,
+    "告诉Gabriel关于Beth",
+    "TellGabrielAboutBeth"
   ],
   [
     1481,
@@ -543,6 +1213,16 @@
     1500,
     "Tabufa · 口交",
     "SexSceneTabufaBJ"
+  ],
+  [
+    1556,
+    "Beth · 求欢1（大场景）",
+    "AskBethForSex1"
+  ],
+  [
+    1557,
+    "Beth · 求欢2",
+    "AskBethForSex2"
   ],
   [
     1631,
@@ -690,14 +1370,54 @@
     "SexSceneJosephineThrone"
   ],
   [
+    1781,
+    "女儿 · 伏击之后",
+    "DaughterAfterAmbush"
+  ],
+  [
+    1782,
+    "Daiyu · 脱衣",
+    "DaiyuStripping"
+  ],
+  [
+    1783,
+    "ED · 脱衣",
+    "EDStripping"
+  ],
+  [
+    1784,
+    "对峙灰港杀手",
+    "ConfrontGreyportKiller"
+  ],
+  [
     1794,
     "Baron · 登场",
     "BaronIntroScene"
   ],
   [
+    1795,
+    "初次游泳（大场景）",
+    "FirstTimeSwimming"
+  ],
+  [
     1801,
     "Baron · 训斥",
     "BaronScoldingScene"
+  ],
+  [
+    1803,
+    "同床",
+    "TheBedding"
+  ],
+  [
+    1804,
+    "职责召唤",
+    "DutyCalls"
+  ],
+  [
+    1805,
+    "Yvette · 泳池花园 H",
+    "YvetteSexInThePoolGarden"
   ],
   [
     1821,

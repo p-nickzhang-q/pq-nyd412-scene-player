@@ -37,17 +37,22 @@ import sys
 import time
 
 IMG_EXTS = ('.rpgmvp', '.png', '.jpg', '.jpeg', '.webp')
-NOOP_CODES = (0, 108, 408)
 PLUGIN_NAME = 'ScenePlayer'
 UNLOCK_PLUGIN = 'VirtualacgPC'
 UNLOCK_PARAM = 'unlockEvents'
 DEFAULT_PATTERN = 'scene'
-# 本作的 8 个非 CG 杂项：SceneIntro/SceneExtro、GDScene01-03、AnimPixieScene1-Cam1/2/3
-DEFAULT_EXCLUDE = '410,411,487,488,489,1894,1895,1896'
+# 本作真正非 CG 的 5 个：SceneIntro/SceneExtro（系统过场）、AnimPixieScene1-Cam1/2/3（动画子事件）
+DEFAULT_EXCLUDE = '410,411,1894,1895,1896'
+DEFAULT_MODE = 'auto'
+DEFAULT_MIN_PICS = 4
 DEFAULT_KEYS = {'openKey': '118', 'nextKey': '119', 'autoKey': '120',
                 'msgKey': '121', 'autoDelay': '60', 'msgDelay': '45'}
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
+
+# 复用 scan_game 的扫描/挑选逻辑，避免两个工具口径不一致
+sys.path.insert(0, HERE)
+import scan_game  # noqa: E402
 
 
 def log(*args):
@@ -109,72 +114,6 @@ def check_engine(www):
 # 扫描场景 / 缺素材
 # ---------------------------------------------------------------------------
 
-def load_common_events(data_dir):
-    path = os.path.join(data_dir, 'CommonEvents.json')
-    if not os.path.isfile(path):
-        raise SystemExit('找不到 %s，无法扫描场景。' % path)
-    by_id = {}
-    for event in json.load(open(path, encoding='utf-8')):
-        if event:
-            by_id[event['id']] = event
-    return by_id
-
-
-def has_content(event):
-    return any(c.get('code') not in NOOP_CODES for c in event.get('list', []))
-
-
-def closure_pictures(by_id, event_id, seen=None):
-    if seen is None:
-        seen = set()
-    if event_id in seen:
-        return set()
-    seen.add(event_id)
-    event = by_id.get(event_id)
-    if not event:
-        return set()
-    pics = set()
-    for cmd in event.get('list', []):
-        params = cmd.get('parameters') or []
-        if cmd.get('code') == 231 and len(params) > 1:
-            pics.add(str(params[1]))
-        elif cmd.get('code') == 117 and params:
-            pics |= closure_pictures(by_id, params[0], seen)
-    return pics
-
-
-def index_pictures(www):
-    pics_dir = os.path.join(www, 'img', 'pictures')
-    if not os.path.isdir(pics_dir):
-        return None, pics_dir
-    names = set()
-    for fn in os.listdir(pics_dir):
-        base, ext = os.path.splitext(fn)
-        if ext.lower() in IMG_EXTS:
-            names.add(base)
-    return names, pics_dir
-
-
-def scan_scenes(by_id, pattern, exclude, names):
-    rx = re.compile(pattern, re.I)
-    scenes = []
-    for event_id in sorted(by_id):
-        if event_id in exclude:
-            continue
-        event = by_id[event_id]
-        if not rx.search(event.get('name') or ''):
-            continue
-        if not has_content(event):
-            continue
-        orig = event.get('name') or ''
-        scenes.append([event_id, names.get(event_id) or orig or ('#' + str(event_id)), orig])
-    return scenes
-
-
-# ---------------------------------------------------------------------------
-# plugins.js 读写（只动目标条目，其余原样保留）
-# ---------------------------------------------------------------------------
-
 def locate_array(text):
     match = re.search(r'var\s+\$plugins\s*=\s*\[', text)
     if not match:
@@ -223,7 +162,7 @@ def build_entry(scenes, missing, existing_params=None):
                'missingAssets': params.pop('missingAssets')}
     ordered.update(params)          # 保留用户自己加的其它键
     return {'name': PLUGIN_NAME, 'status': True,
-            'description': 'v1.1.0 场景速播器：F7 场景列表 / F8 下一个 / F9 自动连播 / F10 自动推进对话',
+            'description': 'v1.2.0 场景速播器：F7 场景列表 / F8 下一个 / F9 自动连播 / F10 自动推进对话',
             'parameters': ordered}
 
 
@@ -254,6 +193,11 @@ def main():
     ap.add_argument('--no-unlock', action='store_true', help='不改 unlockEvents')
     ap.add_argument('--no-install', action='store_true', help='不复制/更新 ScenePlayer.js')
     ap.add_argument('--pattern', default=DEFAULT_PATTERN, help='场景匹配正则（默认 scene）')
+    ap.add_argument('--mode', choices=['scene', 'auto', 'all-pics'], default=DEFAULT_MODE,
+                    help='scene=只按事件名匹配；auto=再加上「像顶层场景」的（默认，本作得到 306 个）；'
+                         'all-pics=所有含「显示图片」的事件')
+    ap.add_argument('--min-pics', type=int, default=DEFAULT_MIN_PICS,
+                    help='auto 模式下图片数达到多少张才算场景（默认 4）')
     ap.add_argument('--exclude', default=DEFAULT_EXCLUDE, help='排除的事件 id，逗号分隔')
     ap.add_argument('--names', default=os.path.join(REPO, 'params', 'names.zh.json'),
                     help='中文名映射 JSON（默认用仓库里的 params/names.zh.json）')
@@ -275,20 +219,23 @@ def main():
         log('中文名映射     : 未使用（列表将显示原始事件名）')
 
     # --- 2. 扫描 ---
-    by_id = load_common_events(data_dir)
-    scenes = scan_scenes(by_id, args.pattern, exclude, names)
-    have, pics_dir = index_pictures(www)
+    by_id = scan_game.load_common_events(data_dir)
+    scenes = scan_game.select_scenes(by_id, args.pattern, exclude, names,
+                                 args.mode, args.min_pics)
+    have, pics_dir = scan_game.picture_index(www)
     missing = {}
     if have is None:
         log('缺素材检测     : 跳过（找不到 %s）' % pics_dir)
     else:
         for event_id, _, _ in scenes:
-            gone = sorted(p for p in closure_pictures(by_id, event_id) if p not in have)
+            gone = sorted(p for p in scan_game.closure_pictures(by_id, event_id) if p not in have)
             if gone:
                 missing[str(event_id)] = gone
         log('图片素材       : %s（%d 个文件）' % (pics_dir, len(have)))
-    log('场景           : %d 个（匹配 /%s/i，排除 %s）'
-        % (len(scenes), args.pattern, sorted(exclude) or '无'))
+    log('场景           : %d 个（口径 %s%s，匹配 /%s/i，排除 %s）'
+        % (len(scenes), args.mode,
+           '' if args.mode != 'auto' else ' min-pics=%d' % args.min_pics,
+           args.pattern, sorted(exclude) or '无'))
     log('缺素材场景     : %d 个（共 %d 张图）'
         % (len(missing), sum(len(v) for v in missing.values())))
     for event_id, gone in missing.items():

@@ -4,37 +4,32 @@
 
 **本仓库是这款游戏专用的**，不是通用插件：
 
-- 已内置本作 **162 个场景**的清单（含中文名）；
-- 已内置本作 **15 个缺素材场景**的清单 —— 这些场景依赖未安装的可选内容包（Spicy Mod），触发会直接把游戏打成 `Loading Error`，插件会标 ⚠ 并自动跳过；
+- 已内置本作 **306 个场景**的清单（含中文名）；
+- 已内置本作 **30 个缺素材场景**的清单 —— 这些场景依赖未安装的可选内容包（Spicy Mod），触发会直接把游戏打成 `Loading Error`，插件会标 ⚠ 并自动跳过；
 - 安装步骤、FAQ 都是按本作的目录结构和插件环境写的。
 
 场景全表见 **[SCENES.md](SCENES.md)**。
 
-## 覆盖范围（重要）
+## 覆盖范围
 
-**这 162 个不是本作全部的场景**，筛选条件是「公共事件名里含 `Scene`」——一个命名启发式。实测：
+清单来自 `tools/scan_game.py --mode auto`，两条口径取并集：
+
+1. **事件名含 `Scene`**（再剔除 5 个真正非 CG 的：`410` SceneIntro、`411` SceneExtro、`1894-1896` AnimPixieScene1-Cam1/2/3）；
+2. **「像顶层场景」的**：有图片 + 有对白 + 不被其它事件调用（指令 117）+ `trigger=0`，且图片数 ≥4 或名字带场景感关键词，并排除剧情枢纽（`*Dialogue`/`*Quest`/`*Announce*`/`Grow*` 等）。
 
 | 口径 | 数量 |
 |---|---|
 | 公共事件总数 | 2040 |
-| 有实际指令的公共事件 | 1902 |
-| 含「显示图片」的公共事件（真正的 CG 候选） | **1207** |
-| 名字含 `Scene`（本清单的来源） | 171 → 收录 **162** |
-| 「有图+有对白+无人调用+trigger=0」的顶层事件 | 347（本清单只覆盖其中 80 个） |
-| 含「显示图片」的**地图事件**（完全未覆盖） | 309（其中 93 个含 ≥5 张图） |
+| 含「显示图片」的公共事件 | 1207 |
+| 名字含 `Scene`（口径 1） | 166 |
+| 「像顶层场景」（口径 2 新增） | 140 |
+| **本清单合计** | **306** |
+| 含「显示图片」的**地图事件**（未覆盖） | 309（其中 93 个含 ≥5 张图） |
+| `Anim*` 动画子事件（故意不收录） | 60+ |
 
-所以本清单大约只覆盖了「场景」的一半左右，漏掉的主要是：
+**仍然不是「全部」**：本插件按**公共事件 id** 触发，覆盖不到指令写在 `pages[].list` 里的**地图事件**（`Map008` 事件#3 有 1779 条指令 64 张图这类）。`Anim*` 是场景内部调用的动画子事件，单独播通常没有画面，故意不收。
 
-- 名字不含 `Scene` 的独立场景，例如 `MiaSexInBed1`、`CaleahZivaSex`、`ZsofiaSexInCemetery`、
-  `ShakalaSexInForest`、`LuthienSexInCabinChair`、`AskBethForSex1`、`LuLiThreesome`、`MassZivaPart1`、
-  `DST01BBSetFree`、`VictoriaAndDaughter` 等（按较紧的启发式还能再挑出 **143** 个，其中 14 个缺素材）；
-- **地图事件**里的场景（指令在 `pages[].list` 里，不在公共事件里）——本插件按公共事件 id 触发，
-  这类场景需要「传送到对应地图再触发事件」，当前版本不覆盖；
-- `Anim*` 系列（60+ 个）是场景内部调用的动画子事件，单独播通常没有画面，属于**故意不收录**。
-
-如需扩充清单，见 `tools/scan_game.py`（换 `--pattern` 或改用图片数量筛选）。
-
----
+如需再扩口径：`--mode all-pics` 会把 1207 个含图片的事件全列进来（含大量子事件，不建议）。
 
 ## 先了解本作的几个坑
 
@@ -45,7 +40,7 @@
 | **引擎实际是 RPG Maker MV**（`RPGMAKER_NAME === 'MV'`），尽管本作自带的 `VirtualacgPC.js` 插件头部写着 `@target MZ` —— 那是移植作者标错了 | 所以本插件是 MV 版；别拿 MZ 插件往上套 |
 | 本作自带 `ListenToF8.js`，它**整体改写**了 `SceneManager.onKeyDown`：只保留 F5 重载，**F8 不再打开开发者工具** | 所以 F8 可以安全用作「播放下一个」（标准 MV 里 F8 是 devtools，会冲突） |
 | 游戏目录结构是 `<游戏根目录>/www/js/plugins/`（根目录 `package.json` 的 `main` 是 `www/index.html`） | 插件要放到 `www/js/plugins/`，参数写在 `www/js/plugins.js` |
-| 本作未安装可选内容包（Spicy Mod） | 15 个场景的图片文件根本不存在，触发即 `Loading Error`；本仓库的 `params/missingAssets.json` 就是这份清单 |
+| 本作未安装可选内容包（Spicy Mod） | 30 个场景的图片文件根本不存在，触发即 `Loading Error`；本仓库的 `params/missingAssets.json` 就是这份清单 |
 | 场景的对话文本已汉化，但事件名仍是英文（`SexSceneAliceTF` 之类） | 所以本插件支持给每个场景配中文显示名，仓库里已配好 |
 
 ---
@@ -58,7 +53,7 @@
 | **F8 单键下一个** | 不开任何菜单，按一下播下一个场景；连按就是连着看 |
 | **F9 自动连播** | 当前场景一结束，自动接下一个（间隔可配） |
 | **F10 自动推进对话** | 对话显示完整后自动翻页；**遇到选项/数字输入绝不替你选** |
-| **缺素材检测** | 启动后读取 `img/pictures` 建索引，本作那 15 个缺图场景标红 ⚠、拒绝播放、自动连播时跳过 |
+| **缺素材检测** | 启动后读取 `img/pictures` 建索引，本作那 30 个缺图场景标红 ⚠、拒绝播放、自动连播时跳过 |
 | **控制台 API** | `ScenePlayer.playId(1257)` 之类，方便脚本化调试 |
 
 设计上刻意保守：只做「触发公共事件」，**不直接改存档数据**；事件/对话运行中不会重入，避免叠事件。
@@ -149,7 +144,7 @@ ScenePlayer.scenes            // 当前场景列表
 
 ## 缺素材检测
 
-本作未安装可选内容包（Spicy Mod），**162 个场景里有 15 个**的图片文件不存在（共 526 张），触发即：
+本作未安装可选内容包（Spicy Mod），**306 个场景里有 30 个**的图片文件不存在（共 884 张），触发即：
 
 ```
 Loading Error
@@ -167,40 +162,53 @@ Missing Spicy Mod detected: ...
 4. 全部不可播时自动连播停下并提示，不会每帧重试刷屏；
 5. **以后装上 Spicy Mod 会自动放行**，不需要改配置（每次实时查文件）。
 
-15 个受影响场景：
+30 个受影响场景：
 
 | id | 中文名 | 缺图数 | 素材族 |
 |---|---|---|---|
-| 295 | 女儿 · 床上1 | 23 | DaughterBedScene / P |
-| 297 | 女儿 · 床上2 | 27 | DaughterBedScene / P |
-| 298 | 女儿 · 床上3 | 13 | DaughterBedSceneB / 2B |
+| 291 | Victoria × 女儿 | 39 | MCBedroom4 |
+| 293 | 女儿 · 去游泳 | 27 | Bathing |
+| 295 | 女儿 · 床上1 | 23 | DaughterBedScene, DaughterBedScene2, DaughterBedSceneP |
+| 297 | 女儿 · 床上2 | 27 | DaughterBedScene, DaughterBedScene2, DaughterBedSceneP |
+| 298 | 女儿 · 床上3 | 13 | DaughterBedScene2B, DaughterBedSceneB |
+| 301 | Erevi · 床上速战2 | 6 | BedroomTOD |
+| 304 | Erevi × 女儿 | 19 | BedroomTOD5 |
+| 309 | Victoria × 女儿（灵药） | 39 | MCBedroom4 |
+| 345 | 女儿 · 去游泳（灵药） | 27 | Bathing |
+| 482 | 观看地精女儿 阶段1 | 4 | GoblinDaughterWoods |
+| 483 | 观看地精女儿 阶段2 | 5 | GoblinDaughterWoods |
+| 487 | 地精女儿 · 剧情01 | 3 | GoblinDaughterWoods3 |
+| 488 | 地精女儿 · 剧情02 | 14 | GoblinDaughterWoods3 |
+| 489 | 地精女儿 · 剧情03 | 13 | GoblinDaughterWoods4 |
+| 496 | 骑士袭击 | 89 | GoblinHallBedroom |
 | 497 | Shakala · GD H01 | 89 | GoblinHallBedroom |
-| 1250 | 女儿 · 巨魔 | 34 | TODPlay / NP |
-| 1251 | 女儿 · 地牢玩具 | 52 | TODSexToy / Preg |
-| 1254 | 女儿 · 王子 | 34 | TODPlay / HU / HUNP / NP |
-| 1491 | Qetesh · 喷泉 | 19 | TempleFountainC / 2C |
-| 1498 | 地牢装置 · ED | 32 | DDED / DDED_P |
-| 1644 | ED · 湿身少女 | 26 | EDMoistMaiden / BT |
-| 1823 | ED · 课程 | 42 | EDLessonsX / BT / XP |
-| 1829 | Qetesh · 床上 | 17 | Apparition / Apparition3C |
-| 1833 | Erevi · 新婚夜 ED | 58 | EWNX / P / EreviBedroomX_* |
-| 1837 | Qetesh · 宫殿1 | 30 | PalaceOfQeteshX / XP / X1P / X2P |
-| 1838 | Qetesh · 宫殿2 | 30 | PalaceOfQeteshX / X2P / X4P |
-
----
+| 653 | Erevi · 黑色礼服（灵药） | 8 | KitchenTOD |
+| 1250 | 女儿 · 巨魔 | 34 | TODPlay, TODPlayNP |
+| 1251 | 女儿 · 地牢玩具 | 52 | TODSexToy, TODSexToyPreg |
+| 1254 | 女儿 · 王子 | 34 | TODPlay, TODPlayHU, TODPlayHUNP |
+| 1491 | Qetesh · 喷泉 | 19 | TempleFountain2C, TempleFountainC |
+| 1498 | 地牢装置 · ED | 32 | DDED, DDED_P |
+| 1556 | Beth · 求欢1（大场景） | 56 | StablesN3, StablesN3P, StablesN4 |
+| 1644 | ED · 湿身少女 | 26 | EDMoistMaiden, EDMoistMaidenBT |
+| 1783 | ED · 脱衣 | 9 | EDMoistMaiden, EDPleasure, EDStripB2 |
+| 1823 | ED · 课程 | 42 | EDLessonsX, EDLessonsXBT, EDLessonsXP |
+| 1829 | Qetesh · 床上 | 17 | Apparition3, Apparition3C |
+| 1833 | Erevi · 新婚夜 ED | 58 | EWNX, EWNX1, EWNXP |
+| 1837 | Qetesh · 宫殿1 | 30 | PalaceOfQeteshX, PalaceOfQeteshX1, PalaceOfQeteshX1P |
+| 1838 | Qetesh · 宫殿2 | 30 | PalaceOfQeteshX2, PalaceOfQeteshX2P, PalaceOfQeteshX3 |
 
 ## 参数说明
 
 | 参数 | 本作取值 | 说明 |
 |---|---|---|
-| `sceneList` | 162 项 | 场景列表，`[id, 中文名, 英文原名]` |
+| `sceneList` | 306 项 | 场景列表，`[id, 中文名, 英文原名]` |
 | `openKey` | `118`（F7） | 打开列表 |
 | `nextKey` | `119`（F8） | 播放下一个 |
 | `autoKey` | `120`（F9） | 自动连播开关 |
 | `msgKey` | `121`（F10） | 自动推进对话开关 |
 | `autoDelay` | `60` | 场景结束后等多少帧播下一个（60 帧 ≈ 1 秒） |
 | `msgDelay` | `45` | 对话显示完后等多少帧翻页（45 帧 ≈ 0.75 秒） |
-| `missingAssets` | 15 个场景 | 缺素材清单 `{"场景id":["图片名",...]}` |
+| `missingAssets` | 30 个场景 | 缺素材清单 `{"场景id":["图片名",...]}` |
 
 常用 keyCode：F6=117、F7=118、F8=119、F9=120、F10=121、F11=122。
 
@@ -212,10 +220,10 @@ Missing Spicy Mod detected: ...
 
 ```
 ScenePlayer.js              插件本体（638 行，无构建步骤）
-SCENES.md                   162 个场景对照表（id / 中文名 / 原名 / 指令数 / 缺素材）
-params/sceneList.json       162 项场景列表（可读格式）
-params/missingAssets.json   15 个缺素材场景的 526 个缺失文件名
-params/names.zh.json        {场景id: 中文名}，供重新生成时复用
+SCENES.md                   306 个场景对照表（id / 中文名 / 原名 / 指令数 / 缺素材 / 是否在 unlockEvents）
+params/sceneList.json       306 项场景列表（可读格式）
+params/missingAssets.json   30 个缺素材场景的 884 个缺失文件名
+params/names.zh.json        {场景id: 中文名}（306 条），供重新生成时复用
 params/plugins-entry.txt    可直接粘进 www/js/plugins.js 的整行条目
 tools/scan_game.py          扫描游戏重新生成上面这些参数
 tools/fix-unlock-events.py   修正作弊菜单的 unlockEvents（剔除缺素材 id / 装包后恢复）
@@ -225,13 +233,16 @@ CHANGELOG.md                更新日志
 ## 重新生成清单（游戏更新到 NYD413+ 时）
 
 ```bash
-python3 tools/scan_game.py "/path/to/农民的任务/www" \
-    --names params/names.zh.json \
-    --exclude 410,411,487,488,489,1894,1895,1896 \
+# 一条命令全自动：扫描 → 生成参数 → 写入 plugins.js → 修正 unlockEvents
+python3 tools/setup.py "/path/to/农民的任务" --rebuild-unlock --yes
+
+# 只想拿到参数文本：
+python3 tools/scan_game.py "/path/to/农民的任务/www" --mode auto \
+    --names params/names.zh.json --exclude 410,411,1894,1895,1896 \
     --emit entry > params/plugins-entry.txt
 ```
 
-脚本会扫 `data/CommonEvents.json` 里名字含 `scene` 且有实际指令的事件，沿「调用公共事件」（指令 117）**递归**收集图片，因此被场景调用的子事件缺图也能算出来。`--exclude` 里的 8 个是本作的非 CG 杂项（`SceneIntro`/`SceneExtro`/`GDScene01-03`/`AnimPixieScene1-Cam1-3`）。
+脚本沿「调用公共事件」（指令 117）**递归**收集图片，因此被场景调用的子事件缺图也能算出来。`--exclude` 里的 5 个是本作真正非 CG 的（系统过场 + 精灵动画机位子事件）。
 
 > 注意：`--names` 只对新 id 之外的部分生效；如果新版本改动了场景名，中文名映射需要手工补。
 
@@ -241,22 +252,22 @@ python3 tools/scan_game.py "/path/to/农民的任务/www" \
 本作因为 `ListenToF8.js` 改过 `SceneManager.onKeyDown`，F8 是空的，正常可用。若你装了别的改键插件导致冲突，把 `nextKey` 改成 `"117"`（F6）或 `"122"`（F11）。
 
 **Q：报 `Loading Error: Failed to load: img/pictures/...`？**
-说明素材缺失。本作那 15 个已在 `missingAssets` 里，插件会拦住；如果报了**新的**文件，说明游戏更新了或装了一半内容包，重新跑一遍 `tools/scan_game.py` 更新 `missingAssets` 即可。
+说明素材缺失。本作那 30 个已在 `missingAssets` 里，插件会拦住；如果报了**新的**文件，说明游戏更新了或装了一半内容包，重新跑一遍 `tools/scan_game.py` 更新 `missingAssets` 即可。
 
 **Q：报 `TypeError: Cannot read property 'length' of undefined` at `maxItems`？**
 v1.0.0 的 bug（`Window_Selectable.initialize` 内部会先调 `maxItems()`，而当时 `_data` 还没初始化），v1.0.1 已修，请用最新版。
 
 **Q：作弊菜单里选到缺素材的场景照样报错？**
-对，`VirtualacgPC` 的 `unlockEvents` 里也含这 15 个 id，那个菜单不走本插件的素材检查，选到就是 `Loading Error`。
+对，`VirtualacgPC` 的 `unlockEvents` 里也含这 30 个 id，那个菜单不走本插件的素材检查，选到就是 `Loading Error`。
 
-推荐把 `unlockEvents` 收窄到 **147 个**（`162 - 15`），仓库里的脚本可以直接做：
+推荐把 `unlockEvents` 收窄到 **276 个**（`306 - 30`），仓库里的脚本可以直接做：
 
 ```bash
 # 先看会改什么
 python3 tools/fix-unlock-events.py "/path/to/农民的任务/www" --dry-run
 # 执行（自动备份 plugins.js.bak-<时间戳>，改完回读校验）
 python3 tools/fix-unlock-events.py "/path/to/农民的任务/www"
-# 以后装了 Spicy Mod，一键把 162 个全加回来
+# 以后装了 Spicy Mod，一键把 306 个全加回来
 python3 tools/fix-unlock-events.py "/path/to/农民的任务/www" --restore
 ```
 
@@ -264,14 +275,14 @@ python3 tools/fix-unlock-events.py "/path/to/农民的任务/www" --restore
 
 于是两个入口的分工是刻意的：
 
-- **ScenePlayer 列表（F7）**：162 个全列出，缺素材的标 ⚠ 并在播放/连播时跳过 —— 让你知道有哪些场景存在；
-- **作弊菜单「解锁公共事件」**：147 个，不含缺素材场景 —— 因为那个菜单没有素材检查能力。
+- **ScenePlayer 列表（F7）**：306 个全列出，缺素材的标 ⚠ 并在播放/连播时跳过 —— 让你知道有哪些场景存在；
+- **作弊菜单「解锁公共事件」**：276 个，不含缺素材场景 —— 因为那个菜单没有素材检查能力。
 
 **Q：自动连播到某个场景停了？**
 ① 该场景缺素材被跳过、且后面没有可播的了 → 插件会提示「自动连播已停止」；② 场景里有需要你操作的选项 —— `F10` 的自动推进**不会替你选选项**，这是刻意设计。
 
 **Q：会污染存档吗？**
-插件本身只调 `$gameTemp.reserveCommonEvent(id)`，不写存档。但**被触发的场景本身会改开关/变量/物品**，按顺序乱播 162 个场景可能把进度搞乱。**建议先存一个独立存档再玩自动连播。**
+插件本身只调 `$gameTemp.reserveCommonEvent(id)`，不写存档。但**被触发的场景本身会改开关/变量/物品**，按顺序乱播 306 个场景可能把进度搞乱。**建议先存一个独立存档再玩自动连播。**
 
 **Q：怎么彻底回滚？**
 本仓库不含游戏文件。删插件文件 + 删 `plugins.js` 里那条即可，游戏本体不受影响。

@@ -633,6 +633,6 @@
         console.warn('[ScenePlayer] 环境不支持 window.addEventListener，快捷键不可用');
     }
 
-    console.log('[ScenePlayer] 已加载，场景数 = ' + SCENES.length
+    console.log('[ScenePlayer] v1.2.0 已加载，场景数 = ' + SCENES.length
         + '  | F7 列表  F8 下一个  F9 连播  F10 自动对话');
 })();

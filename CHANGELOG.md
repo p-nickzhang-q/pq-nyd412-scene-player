@@ -1,5 +1,20 @@
 # 更新日志
 
+## v1.2.0（场景清单扩充）
+
+- **场景清单 162 → 306**：新增口径「像顶层场景的」（有图 + 有对白 + 不被其它事件用指令 117 调用 +
+  `trigger=0`，且图片数 ≥4 或名字带场景感关键词，排除剧情枢纽与 `Anim*` 子事件），补进 140 个
+  名字不含 `Scene` 的独立场景（`MiaSexInBed1`、`CaleahZivaSex`、`ZsofiaSexInCemetery`、
+  `AskBethForSex1`、`MassZivaPart1`、`DST01BBSetFree` 等）。
+- `GDScene01-03` 从排除名单收回（是 13 张图的真场景）；排除名单从 8 个收窄到 5 个真正非 CG 的
+  （`410` SceneIntro、`411` SceneExtro、`1894-1896` AnimPixieScene1-Cam1/2/3）。
+- **缺素材场景 15 → 30**（526 → 884 个缺失文件名），`unlockEvents` 147 → 276。
+- `tools/scan_game.py` 新增 `--mode scene|auto|all-pics` 与 `--min-pics`。
+- `tools/setup.py` 重构为**复用 `scan_game` 的扫描逻辑**（新增 `--mode` / `--min-pics`），
+  两个工具的口径不会再漂移。
+- 实测仍不覆盖：含「显示图片」的**地图事件** 309 个（指令在 `pages[].list`，本插件按公共事件 id 触发）。
+
+
 ## v1.1.0（仓库整理）
 
 - 仓库定位改为**《农民的任务》NYD412 专用**：README 全面改写为本作视角（引擎实为 MV、
