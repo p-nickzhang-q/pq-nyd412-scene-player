@@ -116,6 +116,8 @@ MV 在启动时加载插件，改完必须重启游戏（`F5` 或关掉重开）
 | F8 | 119 | F11 | 122 |
 
 > **F7 在 Chromium 里是「插入符浏览」**，个别版本会抢键。如果按 F7 没反应或出现怪异光标，把 `openKey` 改成 `"117"`（F6）即可。
+>
+> **F8 在标准 MV 里是「打开开发者工具」**（仅 test 模式）。有些游戏用 `SceneManager.onKeyDown` 把它改掉了，这时 F8 可安全使用；没改的游戏里按 F8 会弹出 devtools，把 `nextKey` 改成 `"117"`（F6）或 `"122"`（F11）即可。
 
 ---
 
@@ -147,7 +149,7 @@ MV 在启动时加载插件，改完必须重启游戏（`F5` 或关掉重开）
 
 ### 控制台 API
 
-游戏里按 `F8`（部分版本是 `F12`）打开开发者工具，在 Console 里：
+游戏里按 `F12`（Chromium 默认）打开开发者工具，在 Console 里：
 
 ```js
 ScenePlayer.playNext()        // 播放下一个
@@ -227,8 +229,8 @@ python3 tools/scan_game.py /path/to/game/www --emit entry
 
 ## 常见问题
 
-**Q：按 F7/F8 没反应？**
-确认插件已注册且 `"status":true`，并重启过游戏。F7 被占用就改 `openKey`（见上文 keyCode 表）。另外快捷键只在**场景地图**上生效（菜单/战斗中不响应）。
+**Q：按 F7/F8 没反应，或者按 F8 弹出了开发者工具？**
+确认插件已注册且 `"status":true`，并重启过游戏。按键被系统/引擎占用时改对应参数即可：F7 → `openKey:"117"`（F6），F8 → `nextKey:"117"` 或 `"122"`（F11），见上文 keyCode 表。另外快捷键只在**场景地图**上生效（菜单/战斗中不响应）。
 
 **Q：报 `Loading Error: Failed to load: img/pictures/...`？**
 这就是缺素材，用 `tools/scan_game.py` 生成 `missingAssets` 填进去；或者干脆把那些场景从 `sceneList` 里删掉。补上素材后不需要改配置。
