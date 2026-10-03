@@ -1,5 +1,14 @@
 # 更新日志
 
+## v1.1.0（仓库整理）
+
+- 仓库定位改为**《农民的任务》NYD412 专用**：README 全面改写为本作视角（引擎实为 MV、
+  本作 `ListenToF8.js` 改过按键、目录结构为 `www/`、可选内容包未安装等实测结论）。
+- 新增 `params/`：`sceneList.json`（162 项）、`missingAssets.json`（15 场景 526 个缺失文件名）、
+  `names.zh.json`（中文名映射）、`plugins-entry.txt`（可直接粘进 `www/js/plugins.js` 的整行）。
+- 新增 `SCENES.md`：162 个场景对照表（id / 中文名 / 原名 / 指令数 / 首句 / 缺素材）。
+- 仓库名改为 `pq-nyd412-scene-player`。
+
 ## v1.1.0
 
 - **新增：缺素材检测**。`missingAssets` 参数（`{"场景id":["图片名",...]}`）配合运行时目录索引：
