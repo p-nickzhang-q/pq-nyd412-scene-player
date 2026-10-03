@@ -145,13 +145,17 @@ def find_entry(entries, name):
     return None, None, None
 
 
-def build_entry(scenes, missing, existing_params=None):
+def build_entry(scenes, missing, existing_params=None, map_scenes=None, tags=None):
+    map_scenes = map_scenes or []
+    tags = tags or {}
     params = dict(DEFAULT_KEYS)
     if existing_params:
         params.update({k: v for k, v in existing_params.items()
-                       if k not in ('sceneList', 'missingAssets')})
+                       if k not in ('sceneList', 'missingAssets', 'mapScenes', 'tags')})
     params['sceneList'] = json.dumps(scenes, ensure_ascii=False, separators=(',', ':'))
     params['missingAssets'] = json.dumps(missing, ensure_ascii=False, separators=(',', ':'))
+    params['mapScenes'] = json.dumps(map_scenes, ensure_ascii=False, separators=(',', ':'))
+    params['tags'] = json.dumps(tags, ensure_ascii=False, separators=(',', ':'))
     ordered = {'sceneList': params.pop('sceneList'),
                'openKey': params.pop('openKey', '118'),
                'nextKey': params.pop('nextKey', '119'),
@@ -159,10 +163,13 @@ def build_entry(scenes, missing, existing_params=None):
                'msgKey': params.pop('msgKey', '121'),
                'autoDelay': params.pop('autoDelay', '60'),
                'msgDelay': params.pop('msgDelay', '45'),
-               'missingAssets': params.pop('missingAssets')}
+               'filterKey': params.pop('filterKey', '117'),
+               'missingAssets': params.pop('missingAssets'),
+               'mapScenes': params.pop('mapScenes'),
+               'tags': params.pop('tags')}
     ordered.update(params)          # 保留用户自己加的其它键
     return {'name': PLUGIN_NAME, 'status': True,
-            'description': 'v1.2.0 场景速播器：F7 场景列表 / F8 下一个 / F9 自动连播 / F10 自动推进对话',
+            'description': 'v2.0.0 场景速播器：F7 场景列表 / F8 下一个 / F9 自动连播 / F10 自动推进对话',
             'parameters': ordered}
 
 
@@ -192,6 +199,8 @@ def main():
                     help='用扫描结果重建 unlockEvents = 场景 id − 缺素材 id（现有列表不可信时用，例如本作原始的 [2041]）')
     ap.add_argument('--no-unlock', action='store_true', help='不改 unlockEvents')
     ap.add_argument('--no-install', action='store_true', help='不复制/更新 ScenePlayer.js')
+    ap.add_argument('--no-maps', action='store_true', help='不收录地图事件场景')
+    ap.add_argument('--map-min-pics', type=int, default=5, help='地图事件图片数阈值（默认 5）')
     ap.add_argument('--pattern', default=DEFAULT_PATTERN, help='场景匹配正则（默认 scene）')
     ap.add_argument('--mode', choices=['scene', 'auto', 'all-pics'], default=DEFAULT_MODE,
                     help='scene=只按事件名匹配；auto=再加上「像顶层场景」的（默认，本作得到 306 个）；'
@@ -219,27 +228,42 @@ def main():
         log('中文名映射     : 未使用（列表将显示原始事件名）')
 
     # --- 2. 扫描 ---
-    by_id = scan_game.load_common_events(data_dir)
-    scenes = scan_game.select_scenes(by_id, args.pattern, exclude, names,
-                                 args.mode, args.min_pics)
-    have, pics_dir = scan_game.picture_index(www)
-    missing = {}
-    if have is None:
-        log('缺素材检测     : 跳过（找不到 %s）' % pics_dir)
+    res = scan_game.collect(data_dir, www, args.pattern, exclude, names, args.mode,
+                            args.min_pics, not args.no_maps, args.map_min_pics, (0, 1, 2))
+    by_id = res['by_id']
+    scenes = res['scenes']
+    map_scenes = res['map_scenes']
+    missing = res['missing']
+    tags = res['tags']
+    if res['have'] is None:
+        log('图片检测       : 跳过（找不到 %s）' % res['pics_dir'])
     else:
-        for event_id, _, _ in scenes:
-            gone = sorted(p for p in scan_game.closure_pictures(by_id, event_id) if p not in have)
-            if gone:
-                missing[str(event_id)] = gone
-        log('图片素材       : %s（%d 个文件）' % (pics_dir, len(have)))
-    log('场景           : %d 个（口径 %s%s，匹配 /%s/i，排除 %s）'
-        % (len(scenes), args.mode,
+        log('图片素材       : %s（%d 个文件）' % (res['pics_dir'], len(res['have'])))
+    if res['have_movies'] is None:
+        log('影片检测       : 跳过（找不到 %s）' % res['movies_dir'])
+    else:
+        log('影片素材       : %s（%d 个文件）' % (res['movies_dir'], len(res['have_movies'])))
+    log('场景           : %d 个公共事件 + %d 个地图事件（口径 %s%s，匹配 /%s/i，排除 %s）'
+        % (len(scenes), len(map_scenes), args.mode,
            '' if args.mode != 'auto' else ' min-pics=%d' % args.min_pics,
            args.pattern, sorted(exclude) or '无'))
-    log('缺素材场景     : %d 个（共 %d 张图）'
-        % (len(missing), sum(len(v) for v in missing.values())))
-    for event_id, gone in missing.items():
-        log('   #%-5s %-34s 缺 %d 张' % (event_id, by_id[int(event_id)].get('name'), len(gone)))
+    log('类型标签       : H %d / 剧情 %d / 杂项 %d'
+        % (sum(1 for v in tags.values() if v == 'h'),
+           sum(1 for v in tags.values() if v == 'story'),
+           sum(1 for v in tags.values() if v == 'misc')))
+    log('缺素材场景     : %d 个（缺图 %d 张 + 缺影片 %d 个）'
+        % (len(missing),
+           sum(1 for v in missing.values() for x in v if not x.startswith('movie:')),
+           sum(1 for v in missing.values() for x in v if x.startswith('movie:'))))
+    for key, gone in missing.items():
+        if key.startswith('m'):
+            mid, eid = key[1:].split(':')
+            label = 'Map%03d #%s' % (int(mid), eid)
+        else:
+            label = by_id[int(key)].get('name')
+        n_mov = sum(1 for x in gone if x.startswith('movie:'))
+        log('   %-10s %-34s 缺 %d 项%s' % (key, label, len(gone),
+            '（含影片 %d）' % n_mov if n_mov else ''))
     if not scenes:
         raise SystemExit('一个场景都没扫到，请检查 --pattern。')
 
@@ -261,7 +285,8 @@ def main():
     text = open(plugins_path, encoding='utf-8').read()
     entries, array_end = iter_entries(text)
     existing, _, _ = find_entry(entries, PLUGIN_NAME)
-    entry = build_entry(scenes, missing, existing['parameters'] if existing else None)
+    entry = build_entry(scenes, missing, existing['parameters'] if existing else None,
+                        map_scenes, tags)
     entry_action = 'update' if existing else 'add'
     # 用语义比较判断是否需要写入：避免因空白/键序/description 措辞差异而反复重写
     entry_changed = (existing is None) or (existing != entry)
@@ -275,13 +300,13 @@ def main():
         unlock_before = json.loads(unlock_entry['parameters'][UNLOCK_PARAM])
         scene_ids = {row[0] for row in scenes}
         unlock_bogus = [i for i in unlock_before if i not in by_id]
+        # 只有公共事件 id 才和 unlockEvents 有关；地图场景键形如 "m8:3"，忽略
+        drop = {int(k) for k in missing if not k.startswith('m')}
         if args.restore:
             unlock_after = sorted(scene_ids)
         elif args.rebuild_unlock:
-            drop = {int(k) for k in missing}
             unlock_after = sorted(scene_ids - drop)
         else:
-            drop = {int(k) for k in missing}
             unlock_after = [i for i in unlock_before if i not in drop]
 
     log('')

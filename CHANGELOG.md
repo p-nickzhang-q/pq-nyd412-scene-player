@@ -1,5 +1,37 @@
 # 更新日志
 
+## v2.0.0
+
+### 修复：播放时卡住（缺影片）
+- **根因**：MV 的 `Graphics._playVideo` 把 `onerror` 接到重试加载器
+  （`ResourceHandler._defaultRetryInterval = [500, 1000, 3000]`），且 `_videoLoading = true` 让
+  `isVideoPlaying()` 恒为真、解释器卡在 `waitMode 'video'`。**每个缺失影片卡约 4.5 秒**。
+  本作 923 个影片引用里有 100 个文件不存在，`Beth · 求欢1` 一个场景就缺 12 个（≈54 秒）。
+- **修复**：缺素材检测从「只查图片（指令 231）」扩展到「也查影片（指令 261）」，
+  影片项在 `missingAssets` 里带 `movie:` 前缀；插件运行时同时索引 `img/pictures` 与 `movies`。
+  受影响场景从 30 个升到 39 个（其中 23 个含缺失影片）。
+
+### 新增：地图事件场景（80 个）
+- 地图事件的指令在 `pages[].list`，无法用 `reserveCommonEvent`。播放流程：先
+  `reserveTransfer` 传送到目标地图 → 等落地（最长 10 秒，超时放弃）→ `event.start()`
+  只设 `_starting`，由 MV 的 `Game_Map.setupStartingMapEvent()` 完成解释器 setup 与结束后的 unlock。
+- 防重复触发：事件已 `isStarting()` / 落地时触发了「玩家接触」型事件 / 已有事件在跑 → 不再 `start()`。
+- 新增 `mapScenes` 参数与 `ScenePlayer.playMap(mapId, eventId)`。
+
+### 新增：类型标签与筛选
+- `tags` 参数（386 条）：`h` / `story` / `misc`；`F6`（keyCode 117）循环切换筛选，
+  列表显示 `[H]`/`[剧情]`/`[杂项]`，**自动连播只在当前筛选内**。
+- 标签由 `tools/tagging.py` 的**显式表**给出：本作绝大多数场景本身含性内容，所以 H 是默认，
+  剧情/杂项逐条看过台词后确认（自动分类器试过，会把 80%+ 判成 H，不可用）。
+- 内部模型重构为 `SP.items`（全部）+ `SP.view`（当前筛选），所有位置参数相对 `SP.view`；
+  切换筛选时按 `lastKey` 重新定位光标与「上次播放」。
+
+### 工具
+- `scan_game.py`：新增 `--maps` / `--map-min-pics` / `--map-triggers`；抽出 `collect()` 供两个工具共用；
+  新增 `closure_assets()`（图片+影片）与 `movie_index()`；输出 `mapScenes` 与 `tags`。
+- `setup.py`：改用 `collect()`，写入 `mapScenes` / `tags` / `filterKey`，新增 `--no-maps`。
+
+
 ## v1.2.0（场景清单扩充）
 
 - **场景清单 162 → 306**：新增口径「像顶层场景的」（有图 + 有对白 + 不被其它事件用指令 117 调用 +
