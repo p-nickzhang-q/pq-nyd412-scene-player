@@ -2,6 +2,8 @@
 
 ## v2.0.0
 
+> 已在游戏内实测：缺影片场景不再卡顿。
+
 ### 修复：播放时卡住（缺影片）
 - **根因**：MV 的 `Graphics._playVideo` 把 `onerror` 接到重试加载器
   （`ResourceHandler._defaultRetryInterval = [500, 1000, 3000]`），且 `_videoLoading = true` 让
