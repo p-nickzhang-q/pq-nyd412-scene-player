@@ -1,0 +1,14 @@
+# 编辑器 / 系统
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+
+# 本地测试产物
+*.log
+/tmp/
