@@ -421,7 +421,11 @@ def main():
     names = {}
     if args.names:
         for k, v in load_json(args.names).items():
-            names[int(k)] = str(v)
+            # 键既可能是公共事件 id（"295"），也可能是地图场景（"m1:81"）
+            if str(k).startswith('m'):
+                names[str(k)] = str(v)
+            else:
+                names[int(k)] = str(v)
 
     res = collect(data_dir, os.path.dirname(os.path.dirname(pics_dir)), args.pattern,
                   exclude, names, args.mode, args.min_pics, args.maps,

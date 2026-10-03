@@ -222,7 +222,13 @@ def main():
     exclude = {int(x) for x in args.exclude.split(',') if x.strip()}
     names = {}
     if args.names and os.path.isfile(args.names):
-        names = {int(k): str(v) for k, v in json.load(open(args.names, encoding='utf-8')).items()}
+        names = {}
+    for k, v in json.load(open(args.names, encoding='utf-8')).items():
+        # 键既可能是公共事件 id（"295"），也可能是地图场景（"m1:81"）
+        if str(k).startswith('m'):
+            names[str(k)] = str(v)
+        else:
+            names[int(k)] = str(v)
         log('中文名映射     : %s（%d 条）' % (args.names, len(names)))
     else:
         log('中文名映射     : 未使用（列表将显示原始事件名）')

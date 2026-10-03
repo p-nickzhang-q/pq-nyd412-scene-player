@@ -85,7 +85,10 @@ def main():
     player = entry_by_name(entries, SCENE_PLAYER)
     if player is not None:
         scenes = [row[0] for row in json.loads(player['parameters']['sceneList'])]
-        missing = sorted(int(k) for k in json.loads(player['parameters']['missingAssets']))
+        # missingAssets 的键既可能是公共事件 id（"295"），也可能是地图场景（"m8:3"）；
+        # unlockEvents 只跟公共事件有关，忽略地图键
+        missing = sorted(int(k) for k in json.loads(player['parameters']['missingAssets'])
+                         if not str(k).startswith('m'))
     else:
         scenes, missing = [], []
 
