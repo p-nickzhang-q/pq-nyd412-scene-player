@@ -11,7 +11,7 @@
 
 场景全表见 **[SCENES.md](SCENES.md)**。
 
-> **状态**：v2.0.0 已在游戏内实测通过 —— 缺影片场景不再卡顿（原「播放时卡住、点一下才动」的问题已修复）。
+> **状态**：v2.0.2 已在游戏内实测通过 —— 缺影片场景不再卡顿（原「播放时卡住、点一下才动」的问题已修复）。
 
 ## 界面
 
@@ -263,6 +263,7 @@ params/plugins-entry.txt     可直接粘进 www/js/plugins.js 的整行条目
 tools/setup.py               一键安装/更新（扫描 → 写参数 → 修 unlockEvents）
 tools/scan_game.py           扫描游戏生成参数（--mode scene|auto|all-pics，--maps）
 tools/tagging.py             类型标签的人工确认表（改标签改这里）
+tools/smoke_test.js          无头冒烟测试（76 项断言，不需要启动游戏）
 tools/fix-unlock-events.py   只修 unlockEvents（剔除缺素材 id / 装包后恢复）
 ```
 
@@ -301,6 +302,16 @@ python3 tools/scan_game.py "/path/to/农民的任务/www" --mode auto --maps \
 v1.0.0 的 bug（`Window_Selectable.initialize` 内部会先调 `maxItems()`，而当时 `_data` 还没初始化），
 v1.0.1 已修，请用最新版。
 
+**Q：按 F10 后同一段对话反复播？**
+v2.0.0/v2.0.1 的 bug：自动翻页时只清了 `Window_Message.pause`，没像 MV 的按键分支那样跟着调
+`terminateMessage()`，导致 `$gameMessage` 没被清掉、下一帧又从头 `startMessage()`。
+v2.0.2 已修（`SP.advanceMessage()`）。
+
+**Q：报 `Cannot read property 'list' of undefined` at `Game_Event.list`？**
+v2.0.0 的 bug：地图事件**当前没有生效的事件页**（页条件未满足，`_pageIndex = -1`）时，
+`Game_Event.list()` 里的 `this.page().list` 会抛错。v2.0.1 已修（改用 `SP.pageListOf()` 安全取值，
+这种场景会提示「当前没有生效的事件页，跳过」）。
+
 **Q：作弊菜单里选到缺素材的场景照样报错？**
 对，`VirtualacgPC` 的 `unlockEvents` 里也含这些 id，那个菜单不走本插件的素材检查。
 用 `tools/fix-unlock-events.py` 收窄到 276 个（`306 - 30`）：
@@ -325,8 +336,15 @@ python3 tools/fix-unlock-events.py "/path/to/农民的任务/www" --restore   # 
 ## 开发与测试
 
 插件是单文件、无构建步骤。核心逻辑（列表解析、筛选、缺素材判定、连播推进、地图场景传送/触发、按键路由）
-都是 `ScenePlayer.*` 上的纯方法，可以在 Node 里用最小 MV 运行时桩做无头测试，不必启动游戏
-（当前 69 项断言，覆盖筛选、地图场景传送/超时/防重复触发、影片索引、跳过缺素材、两行绘制等）。
+都是 `ScenePlayer.*` 上的纯方法，可以在 Node 里用最小 MV 运行时桩做无头测试，不必启动游戏：
+
+```bash
+node tools/smoke_test.js                      # 默认测本作路径
+node tools/smoke_test.js /path/to/game        # 指定游戏根目录
+```
+
+当前 **87 项断言**，覆盖筛选、地图场景传送/超时/防重复触发、影片索引、跳过缺素材、两行绘制等。
+注意它加载的是**游戏里实际安装的那份** `ScenePlayer.js`（不是仓库副本），所以验证的是真正跑起来的代码。
 
 写测试桩时**务必忠实复刻** `Window_Selectable.prototype.initialize` 那条调用链：
 `initialize → deactivate → reselect → select → ensureCursorVisible → maxTopRow → maxRows → maxItems`。

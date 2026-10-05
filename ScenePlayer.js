@@ -491,6 +491,33 @@
 
     // 真正触发地图事件：只设 _starting 标志，MV 的 Game_Map.setupStartingMapEvent 会
     // 在 updateInterpreter 里 setup 解释器、并在结束后 unlock，和玩家自己触发完全一致。
+    // 安全取当前事件页的指令表。
+    // 注意：MV 的 Game_Event.list() 内部是 this.page().list，而当**没有任何事件页的
+    // 条件满足**时 findProperPageIndex() 返回 -1，page() 就是 undefined，直接调
+    // list() 会抛 "Cannot read property 'list' of undefined"。地图事件大量用开关/
+    // 变量卡页条件，所以必须自己判空，不能依赖 list()。
+    SP.pageListOf = function(ev) {
+        if (!ev) { return null; }
+        if (typeof ev.page === 'function') {
+            var page = null;
+            try {
+                page = ev.page();
+            } catch (e) {
+                return null;
+            }
+            return (page && page.list) ? page.list : null;
+        }
+        // 非标准实现（没有 page()）：退回 list()，同样要兜住异常
+        if (typeof ev.list === 'function') {
+            try {
+                return ev.list() || null;
+            } catch (e) {
+                return null;
+            }
+        }
+        return null;
+    };
+
     SP.startMapEvent = function(it, alreadyRunning) {
         var ev = $gameMap.event(it.eventId);
         if (!ev) {
@@ -500,9 +527,13 @@
         // 玩家接触型的事件可能在传送落地时就自己触发了，别重复开
         var running = alreadyRunning || ev.isStarting() || $gameMap.isEventRunning();
         if (!running) {
-            var list = ev.list();
-            if (!list || list.length <= 1) {
-                SP.toast('⚠「' + it.name + '」当前事件页没有指令（页条件未满足）');
+            var list = SP.pageListOf(ev);
+            if (!list) {
+                SP.toast('⚠「' + it.name + '」当前没有生效的事件页（页条件未满足），跳过');
+                return false;
+            }
+            if (list.length <= 1) {
+                SP.toast('⚠「' + it.name + '」当前事件页没有指令，跳过');
                 return false;
             }
             ev.start();
@@ -660,6 +691,18 @@
         }
     };
 
+    // 复刻 MV Window_Message.updateInput 里「按下确定键」的分支。
+    // 关键：文本播完后 onEndOfText 已经把 _textState 置为 null 并 startPause()，
+    // 此时必须像 MV 一样在清 pause 的同时 terminateMessage()（它会 close() 并
+    // $gameMessage.clear()）。只清 pause 的话 $gameMessage 仍是 busy，
+    // 下一帧 canStart() 又会 startMessage()，表现就是「一直重复当前的对话」。
+    SP.advanceMessage = function(mw) {
+        mw.pause = false;
+        if (!mw._textState && typeof mw.terminateMessage === 'function') {
+            mw.terminateMessage();
+        }
+    };
+
     SP.updateMessageAuto = function() {
         if (!SP.msgAuto) { SP.msgWait = 0; return; }
         var scene = SceneManager._scene;
@@ -674,7 +717,7 @@
             if (SP.msgWait > 0) {
                 SP.msgWait--;
             } else {
-                mw.pause = false;
+                SP.advanceMessage(mw);
                 SP.msgWait = SP.msgDelay;
             }
         }
@@ -900,15 +943,19 @@
         if (code === KEY_OPEN) {
             if (inMap) {
                 event.preventDefault();
-                if (!SP.scenes.length) { SP.toast('场景列表为空（插件参数 sceneList 没配）'); return; }
-                SceneManager.push(Scene_ScenePlayer);
+                if (!SP.items.length) { SP.toast('场景列表为空（插件参数没配）'); return; }
+                try {
+                    SceneManager.push(Scene_ScenePlayer);
+                } catch (e) {
+                    console.error('ScenePlayer: 打开列表出错', e);
+                }
             }
             return;
         }
         if (!inMap && !inList) { return; }
         event.preventDefault();
         if (code === KEY_NEXT) {
-            SP.playNext();
+            try { SP.playNext(); } catch (e) { console.error('ScenePlayer: 播放出错', e); }
         } else if (code === KEY_AUTO) {
             SP.toggleAuto();
         } else if (code === KEY_MSG) {
@@ -923,7 +970,7 @@
     }
 
     SP.applyFilter();
-    console.log('[ScenePlayer] v2.0.0 已加载：公共事件 ' + SCENES.length + ' + 地图事件 '
+    console.log('[ScenePlayer] v2.0.2 已加载：公共事件 ' + SCENES.length + ' + 地图事件 '
         + MAP_SCENES.length + ' = ' + SP.items.length + ' 个'
         + '（H ' + SP.countByTag('h') + ' / 剧情 ' + SP.countByTag('story')
         + ' / 杂项 ' + SP.countByTag('misc') + '）'

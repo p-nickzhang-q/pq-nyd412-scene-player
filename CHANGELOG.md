@@ -1,5 +1,45 @@
 # 更新日志
 
+## v2.0.2
+
+### 修复：F10 自动推进对话会一直重复当前对话
+- **根因**：MV 的 `Window_Message.onEndOfText()` 在文本播完后会把 `_textState` 置为 `null` 并
+  `startPause()`（`_waitCount = 10; pause = true`）。玩家按确定键时 `updateInput()` 做的是：
+  ```js
+  this.pause = false;
+  if (!this._textState) { this.terminateMessage(); }   // close() + $gameMessage.clear()
+  ```
+  v2.0.0/v2.0.1 **只清了 `pause`，没跟着 `terminateMessage()`**，于是 `$gameMessage` 仍是 busy，
+  下一帧 `canStart()` 又 `startMessage()` —— 表现就是同一段对话反复播。
+- **修复**：新增 `SP.advanceMessage(mw)`，一字不差复刻上面那个分支（`_textState` 非 null 时只清
+  `pause`，例如 `\|` 等待码的中途暂停，不 terminate）。
+- **测试**：冒烟测试补上「自动推进对话」一节（v2.0.1 重写测试时漏掉了这一节，所以这个 bug 没被
+  抓住），并用一个按 `rpg_windows.js` 分支顺序建模的迷你 `Window_Message` 复现「重复对话」；
+  另有一条对照断言：只清 `pause` 时确实会重复，证明该测试有效。断言数 76 → 87。
+
+
+## v2.0.1
+
+### 修复：播放地图场景时崩溃
+```
+Uncaught TypeError: Cannot read property 'list' of undefined
+    at Game_Event.list (rpg_objects.js:8470)
+    at Object.SP.startMapEvent (ScenePlayer.js:503)
+```
+- **根因**：MV 的 `Game_Event.prototype.list()` 是 `this.page().list`，而 `page()` 是
+  `this.event().pages[this._pageIndex]`；当**没有任何事件页的条件满足**时
+  `findProperPageIndex()` 返回 `-1`，`page()` 就是 `undefined`，直接调 `list()` 必抛。
+  地图事件大量用开关/变量卡页条件，所以很容易踩到。
+- **修复**：新增 `SP.pageListOf(ev)` 统一安全取指令表 —— 先试 `page()`（并兜住异常与 `page.list` 缺失），
+  没有 `page()` 的非标准实现回退到 `list()`（同样兜异常）；`startMapEvent` 改用它，
+  页条件未满足时提示「当前没有生效的事件页（页条件未满足），跳过」而不是崩。
+- 顺手给按键处理器加了 try/catch：单个场景出错不再把异常抛到全局。
+- **测试**：测试桩补上 `page()`（此前 fake event 没有 `page()`，掩盖了这条路径）；
+  新增 6 项回归断言，其中 `mkEvent(null,false)` 用与 MV 一字不差的 `list()` 实现复现该崩溃。
+  断言数 69 → 76。
+- **测试脚本入库**：`tools/smoke_test.js`（此前只在 /tmp，被系统清理过一次）。
+
+
 ## v2.0.0
 
 > 已在游戏内实测：缺影片场景不再卡顿。
