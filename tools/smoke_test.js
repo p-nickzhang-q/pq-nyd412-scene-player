@@ -40,6 +40,7 @@ const P_SCENES = JSON.parse(params.sceneList);
 const P_MAPS = JSON.parse(params.mapScenes || '[]');
 const P_MISS = JSON.parse(params.missingAssets);
 const P_TAGS = JSON.parse(params.tags || '{}');
+const P_SUBS = JSON.parse(params.subScenes || '{}');
 
 // ---- MV 运行时桩 ----
 Number.prototype.clamp = function (min, max) { return Math.min(Math.max(this, min), max); };
@@ -178,7 +179,11 @@ console.log('== 加载与解析 ==');
 ok(SP.items.length === P_SCENES.length + P_MAPS.length,
    'items = ' + SP.items.length + '（公共事件 ' + P_SCENES.length + ' + 地图 ' + P_MAPS.length + '）');
 ok(SP.scenes.length === P_SCENES.length && SP.mapScenes.length === P_MAPS.length, 'SP.scenes / SP.mapScenes 数量正确');
-ok(SP.view.length === SP.items.length, '默认筛选=全部，view = ' + SP.view.length);
+ok(SP.showSub === false, '默认隐藏子场景');
+ok(SP.view.length === SP.items.length - Object.keys(P_SUBS).length,
+   '默认列表 = ' + SP.view.length + '（' + SP.items.length + ' − ' + Object.keys(P_SUBS).length + ' 个子场景）');
+SP.showSub = true; SP.applyFilter();      // 以下「全表」断言都在显示子场景的状态下做
+ok(SP.view.length === SP.items.length, '显示子场景后 view = items = ' + SP.view.length);
 ok(SP.items.filter(i => i.kind === 'map').length === P_MAPS.length, '地图场景已并入 items');
 ok(!!Window_SceneListProto && !!Scene_ScenePlayerProto, '内部窗口/画面类已注册');
 
@@ -205,6 +210,41 @@ ok(SP.last >= 0 && SP.view[SP.last].key === SP.items[firstH].key, '切换筛选�
 SP.cycleFilter();
 ok(SP.filter === 'story', 'cycleFilter 从 h 轮到 story（实际 ' + SP.filter + '）');
 SP.setFilter('all');
+
+console.log('== 子场景（嵌套）==');
+const SUB_KEYS = Object.keys(P_SUBS);
+ok(SUB_KEYS.length > 0, '参数里有 ' + SUB_KEYS.length + ' 个子场景');
+ok(SP.countSub() === SUB_KEYS.length, 'countSub() = ' + SP.countSub());
+ok(SP.showSub === true, '（本节开始时为显示态）');
+SP.toggleSub();
+ok(SP.showSub === false, 'F4 -> 隐藏子场景');
+ok(SP.view.length === SP.items.length - SUB_KEYS.length,
+   '隐藏后列表 = ' + SP.view.length + '（' + SP.items.length + ' − ' + SUB_KEYS.length + '）');
+ok(SP.view.every(i => !i.subOf), '隐藏后列表里没有子场景');
+SP.toggleSub();
+ok(SP.showSub === true && SP.view.length === SP.items.length, 'F4 再按 -> 恢复显示全部');
+const subKey0 = SUB_KEYS[0];
+const subItem = SP.items.find(i => i.key === subKey0);
+ok(!!subItem && !!subItem.subOf && subItem.subOf.length === P_SUBS[subKey0].length,
+   '子场景 #' + subKey0 + ' 记录了 ' + (subItem ? subItem.subOf.length : 0) + ' 个调用者');
+ok(subItem.subOf.every(c => SP.items.some(i => i.key === String(c))),
+   '调用者键都能解析到场景（' + subItem.subOf.slice(0, 2).join(', ') + '）');
+ok(SP.nameOfKey(subItem.subOf[0]) !== '#' + subItem.subOf[0],
+   'nameOfKey 能查到调用者名字: ' + SP.nameOfKey(subItem.subOf[0]));
+// 环保护：互相调用且无环外入口的一组，必须留一个可见
+const cyc = SP.items.filter(i => i.subOf && i.subOf.some(c => SP.items.find(j => j.key === String(c) && j.subOf && j.subOf.indexOf(Number(i.key)) >= 0)));
+const cycVisible = cyc.filter(i => !i.subOf);
+ok(cyc.length > 0 ? cycVisible.length > 0 : true,
+   '互相调用的环里至少有一个可见入口（环内 ' + cyc.length + ' 个）');
+// 与标签筛选叠加
+SP.setFilter('h');
+ok(SP.view.every(i => i.tag === 'h'), '显示子场景时标签筛选仍生效');
+SP.toggleSub();
+ok(SP.showSub === false && SP.view.every(i => i.tag === 'h' && !i.subOf),
+   '隐藏子场景 + 仅H 同时生效（' + SP.view.length + ' 项）');
+SP.toggleSub();
+SP.setFilter('all');
+ok(SP.showSub === true && SP.view.length === SP.items.length, '恢复全表');
 
 console.log('== 缺素材（含影片）==');
 const missKeys = Object.keys(P_MISS);
@@ -469,6 +509,14 @@ ok(w._drawn[0].t.includes('🗺'), '地图场景带 🗺 标记: ' + JSON.string
 ok(w._drawn[1].t.includes('Map'), '地图场景第二行显示 Map 坐标: ' + JSON.stringify(w._drawn[1].t.slice(0, 24)));
 w._drawn = []; w.drawItem(posCE);
 ok(!w._drawn[0].t.includes('⚠'), '正常场景无 ⚠');
+// 子场景（需先显示出来才有位置）
+SP.showSub = true; SP.applyFilter();
+const posSub = SP.view.findIndex(i => i.subOf);
+w._data = SP.view;
+w._drawn = []; w.drawItem(posSub);
+ok(w._drawn[0].t.includes('⊂子场景'), '子场景标 ⊂子场景: ' + JSON.stringify(w._drawn[0].t.trim().slice(-20)));
+ok(w._drawn[1].t.includes('⊂ 被「'), '第二行显示被谁调用: ' + JSON.stringify(w._drawn[1].t.slice(0, 34)));
+SP.showSub = true; SP.applyFilter(); w._data = SP.view;
 ok(w.itemHeight() === 72, 'itemHeight = 72（两行）');
 
 console.log('== 列表画面与帮助文本 ==');

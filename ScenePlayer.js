@@ -2,7 +2,7 @@
 // ScenePlayer.js
 //=============================================================================
 /*:
- * @plugindesc v1.0 场景速播器：场景列表(F7) / 单键下一个(F8) / 自动连播(F9) / 自动推进对话(F10)
+ * @plugindesc v2.1.0 场景速播器：场景列表(F7) / 单键下一个(F8) / 自动连播(F9) / 自动推进对话(F10)
  * @author custom
  *
  * @param sceneList
@@ -52,6 +52,18 @@
  * @desc 默认 117 = F6，循环切换 全部 / 仅H / 仅剧情 / 仅杂项
  * @type number
  * @default 117
+ *
+ * @param subKey
+ * @text 显示/隐藏子场景按键(keyCode)
+ * @desc 默认 115 = F4。子场景 = 被别的场景通过「调用公共事件」播到的场景，默认不显示（避免连播时内容重复）
+ * @type number
+ * @default 115
+ *
+ * @param subScenes
+ * @text 子场景清单(JSON)
+ * @desc {"被调用的场景键":[调用者键,...]}，由 tools/nesting.py 生成。键为公共事件 id（"295"）或地图场景（"m8:3"）
+ * @type string
+ * @default {}
  *
  * @param mapScenes
  * @text 地图事件场景(JSON)
@@ -160,11 +172,13 @@
     var MAP_SCENES = parseMapScenes(params['mapScenes']);
     var MISSING = parseMissing(params['missingAssets']);
     var TAGS = parseTags(params['tags']);
+    var SUBS = parseSubs(params['subScenes']);
     var KEY_OPEN = toInt(params['openKey'], 118);
     var KEY_NEXT = toInt(params['nextKey'], 119);
     var KEY_AUTO = toInt(params['autoKey'], 120);
     var KEY_MSG = toInt(params['msgKey'], 121);
     var KEY_FILTER = toInt(params['filterKey'], 117);   // F6
+    var KEY_SUB = toInt(params['subKey'], 115);         // F4
     var AUTO_DELAY = toInt(params['autoDelay'], 60);
     var MSG_DELAY = toInt(params['msgDelay'], 45);
 
@@ -215,6 +229,25 @@
         return out;
     }
 
+    // 子场景清单：{"295":[264,"m6:6"], ...}
+    // 键 = 被其他场景调用（即「包含在别的场景里」）的场景；值 = 调用它的场景键。
+    // 默认不显示这些子场景，否则连播时会看到「大场景播一遍、里面的小场景又单独播一遍」。
+    function parseSubs(raw) {
+        var obj, out = {};
+        try {
+            obj = JSON.parse(raw || '{}');
+        } catch (e) {
+            console.error(PLUGIN + ': subScenes 不是合法 JSON', e);
+            return out;
+        }
+        if (!obj || typeof obj !== 'object') { return out; }
+        for (var k in obj) {
+            if (!obj.hasOwnProperty(k) || !(obj[k] instanceof Array)) { continue; }
+            out[k] = obj[k].map(String);
+        }
+        return out;
+    }
+
     var TAG_LABEL = { h: 'H', story: '剧情', misc: '杂项' };
     var FILTERS = ['all', 'h', 'story', 'misc'];
     var FILTER_LABEL = { all: '全部', h: '仅H', story: '仅剧情', misc: '仅杂项' };
@@ -255,6 +288,8 @@
     SP.scenes = SCENES;    // 公共事件场景（保持向后兼容）
     SP.mapScenes = MAP_SCENES;
     SP.tags = TAGS;
+    SP.subs = SUBS;        // 子场景清单（被其他场景调用过）
+    SP.showSub = false;    // 默认隐藏子场景
     SP.items = buildItems();
     SP.filter = 'all';
     SP.view = [];
@@ -286,6 +321,7 @@
                 name: SCENES[i].name,
                 orig: SCENES[i].orig,
                 key: String(SCENES[i].id),
+                subOf: SUBS[String(SCENES[i].id)] || null,
                 tag: TAGS[String(SCENES[i].id)] || 'h'
             });
         }
@@ -297,12 +333,14 @@
         return out;
     }
 
-    // 按当前筛选重建可见列表
+    // 按当前筛选重建可见列表（默认排除子场景）
     SP.applyFilter = function() {
         var out = [];
         for (var i = 0; i < SP.items.length; i++) {
-            if (SP.filter === 'all' || SP.items[i].tag === SP.filter) {
-                out.push(SP.items[i]);
+            var it = SP.items[i];
+            if (it.subOf && !SP.showSub) { continue; }
+            if (SP.filter === 'all' || it.tag === SP.filter) {
+                out.push(it);
             }
         }
         SP.view = out;
@@ -332,6 +370,32 @@
 
     SP.itemOf = function(i) {
         return SP.view[i];
+    };
+
+    // 子场景（被别的场景播到的）总数
+    SP.countSub = function() {
+        var n = 0;
+        for (var i = 0; i < SP.items.length; i++) {
+            if (SP.items[i].subOf) { n++; }
+        }
+        return n;
+    };
+
+    SP.toggleSub = function() {
+        SP.showSub = !SP.showSub;
+        SP.applyFilter();
+        SP.refreshHelp();
+        SP.refreshList();
+        SP.toast((SP.showSub ? '已显示子场景' : '已隐藏子场景')
+            + '（子场景 ' + SP.countSub() + ' 个，当前列表 ' + SP.view.length + ' 项）');
+    };
+
+    // 场景键 -> 显示名（用于「被 XX 调用」）
+    SP.nameOfKey = function(key) {
+        for (var i = 0; i < SP.items.length; i++) {
+            if (SP.items[i].key === String(key)) { return SP.items[i].name; }
+        }
+        return '#' + key;
     };
 
     SP.countByTag = function(tag) {
@@ -816,8 +880,19 @@
         var where = it.kind === 'map' ? '🗺' : ' ';
         this.contents.fontSize = base;
         this.drawText(no + ' ' + tag + where + ' #' + (it.kind === 'map' ? it.key : it.id)
-            + '  ' + it.name + (miss.length ? '  ⚠缺素材' : ''), rect.x, rect.y, rect.width);
+            + '  ' + it.name + (miss.length ? '  ⚠缺素材' : '')
+            + (it.subOf ? '  ⊂子场景' : ''), rect.x, rect.y, rect.width);
         var sub = miss.length ? ('缺 ' + miss.length + ' 项（图/影片），需 Spicy Mod：' + miss[0]) : it.orig;
+        if (it.subOf) {
+            var callers = [];
+            for (var ci = 0; ci < it.subOf.length && ci < 2; ci++) {
+                callers.push(SP.nameOfKey(it.subOf[ci]));
+            }
+            // 既缺素材又是子场景时两条信息都要留（缺素材那句在后面，别被盖掉）
+            sub = '⊂ 被「' + callers.join('」「') + '」调用'
+                + (it.subOf.length > 2 ? ' 等 ' + it.subOf.length + ' 处' : '')
+                + (miss.length ? '  ·  ' + sub : '');
+        }
         if (sub) {
             var op = this.contents.paintOpacity;
             this.contents.paintOpacity = 130;
@@ -869,6 +944,7 @@
             if (!SP.canPlay(i)) { blocked++; }
         }
         return 'F6 筛选：' + FILTER_LABEL[SP.filter] + '（' + SP.view.length + '/' + SP.items.length + ' 个）'
+            + '   F4 子场景：' + (SP.showSub ? '显示' : '隐藏') + '（共 ' + SP.countSub() + ' 个）'
             + '   ↑↓ 选择  ←→ 跳10  PgUp/PgDn 翻页  Enter 播放  Esc 关闭'
             + (blocked ? '   ⚠ 缺素材 ' + blocked + ' 个已跳过' : '')
             + '   连播:' + (SP.auto ? '开' : '关') + ' 自动对话:' + (SP.msgAuto ? '开' : '关');
@@ -928,7 +1004,7 @@
         if (event.ctrlKey || event.altKey || event.metaKey) { return; }
         var code = event.keyCode;
         if (code !== KEY_OPEN && code !== KEY_NEXT && code !== KEY_AUTO
-            && code !== KEY_MSG && code !== KEY_FILTER) { return; }
+            && code !== KEY_MSG && code !== KEY_FILTER && code !== KEY_SUB) { return; }
         var scene = SceneManager._scene;
         var inMap = (scene instanceof Scene_Map);
         var inList = (scene instanceof Scene_ScenePlayer);
@@ -937,6 +1013,13 @@
             if (inMap || inList) {
                 event.preventDefault();
                 SP.cycleFilter();
+            }
+            return;
+        }
+        if (code === KEY_SUB) {
+            if (inMap || inList) {
+                event.preventDefault();
+                SP.toggleSub();
             }
             return;
         }
@@ -970,9 +1053,10 @@
     }
 
     SP.applyFilter();
-    console.log('[ScenePlayer] v2.0.2 已加载：公共事件 ' + SCENES.length + ' + 地图事件 '
+    console.log('[ScenePlayer] v2.1.0 已加载：公共事件 ' + SCENES.length + ' + 地图事件 '
         + MAP_SCENES.length + ' = ' + SP.items.length + ' 个'
         + '（H ' + SP.countByTag('h') + ' / 剧情 ' + SP.countByTag('story')
         + ' / 杂项 ' + SP.countByTag('misc') + '）'
-        + '  | F6 筛选  F7 列表  F8 下一个  F9 连播  F10 自动对话');
+        + '，已隐藏子场景 ' + SP.countSub() + ' 个'
+        + '  | F4 子场景  F6 筛选  F7 列表  F8 下一个  F9 连播  F10 自动对话');
 })();
