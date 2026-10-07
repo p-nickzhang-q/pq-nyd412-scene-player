@@ -2,7 +2,7 @@
 // ScenePlayer.js
 //=============================================================================
 /*:
- * @plugindesc v2.2.0 场景速播器：场景列表(F7) / 单键下一个(F8) / 自动连播(F9) / 自动推进对话(F10)
+ * @plugindesc v2.3.0 场景速播器：场景列表(F7) / 单键下一个(F8) / 自动连播(F9) / 自动推进对话(F10)
  * @author custom
  *
  * @param sceneList
@@ -1155,7 +1155,7 @@
     }
 
     SP.applyFilter();
-    console.log('[ScenePlayer] v2.2.0 已加载：公共事件 ' + SCENES.length + ' + 地图事件 '
+    console.log('[ScenePlayer] v2.3.0 已加载：公共事件 ' + SCENES.length + ' + 地图事件 '
         + MAP_SCENES.length + ' = ' + SP.items.length + ' 个'
         + '（H ' + SP.countByTag('h') + ' / 剧情 ' + SP.countByTag('story')
         + ' / 杂项 ' + SP.countByTag('misc') + '）'

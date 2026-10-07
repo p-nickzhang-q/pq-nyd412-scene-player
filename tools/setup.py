@@ -184,7 +184,7 @@ def build_entry(scenes, missing, existing_params=None, map_scenes=None, tags=Non
                'storyChapters': params.pop('storyChapters')}
     ordered.update(params)          # 保留用户自己加的其它键
     return {'name': PLUGIN_NAME, 'status': True,
-            'description': 'v2.2.0 场景速播器：F7 场景列表 / F8 下一个 / F9 自动连播 / F10 自动推进对话 / F3 排序 / F4 子场景',
+            'description': 'v2.3.0 场景速播器：F7 场景列表 / F8 下一个 / F9 自动连播 / F10 自动推进对话 / F3 排序 / F4 子场景',
             'parameters': ordered}
 
 
