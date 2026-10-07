@@ -41,6 +41,8 @@ const P_MAPS = JSON.parse(params.mapScenes || '[]');
 const P_MISS = JSON.parse(params.missingAssets);
 const P_TAGS = JSON.parse(params.tags || '{}');
 const P_SUBS = JSON.parse(params.subScenes || '{}');
+const P_STORY = JSON.parse(params.storyOrder || '[]');
+const P_STORY_TITLES = JSON.parse(params.storyChapters || '[]');
 
 // ---- MV 运行时桩 ----
 Number.prototype.clamp = function (min, max) { return Math.min(Math.max(this, min), max); };
@@ -173,7 +175,9 @@ const SP = global.ScenePlayer;
 let pass = 0, fail = 0;
 const ok = (c, m) => { c ? pass++ : fail++; console.log((c ? '  ✅ ' : '  ❌ ') + m); };
 const idx = (kind, id) => SP.view.findIndex(it => it.kind === kind && (kind === 'ce' ? it.id === id : it.key === id));
-const reset = () => { reserved = []; transferred = []; pushed = false; popped = false; evRunning = false; msgBusy = false; transferring = false; };
+const reset = () => { reserved = []; transferred = []; pushed = false; popped = false; evRunning = false;
+                    msgBusy = false; transferring = false;
+                    SP.pending = null; SP.pendingWait = 0; };   // 连播可能触发传送，会污染后面的用例
 
 console.log('== 加载与解析 ==');
 ok(SP.items.length === P_SCENES.length + P_MAPS.length,
@@ -192,7 +196,7 @@ const cnt = t => SP.items.filter(i => i.tag === t).length;
 ok(SP.countByTag('h') === cnt('h') && cnt('h') > 0, 'H 标签 ' + cnt('h') + ' 个');
 ok(cnt('story') > 0 && cnt('misc') > 0, '剧情 ' + cnt('story') + ' / 杂项 ' + cnt('misc'));
 ok(SP.items.every(i => ['h', 'story', 'misc'].indexOf(i.tag) >= 0), '每个场景都有合法标签');
-ok(SP.itemOf(0).key === String(P_SCENES[0][0]), '首项 key = ' + SP.itemOf(0).key);
+ok(SP.itemOf(0).key === String(P_STORY[0][0]), '首项 = 剧情顺序第一项 ' + SP.itemOf(0).key);
 
 console.log('== 筛选切换 ==');
 SP.setFilter('h');
@@ -210,6 +214,57 @@ ok(SP.last >= 0 && SP.view[SP.last].key === SP.items[firstH].key, '切换筛选�
 SP.cycleFilter();
 ok(SP.filter === 'story', 'cycleFilter 从 h 轮到 story（实际 ' + SP.filter + '）');
 SP.setFilter('all');
+
+console.log('== 剧情排序 ==');
+ok(P_STORY.length === SP.items.length, 'storyOrder 覆盖全部 ' + P_STORY.length + ' 个场景');
+ok(SP.sortMode === 'story', '默认按剧情排序');
+ok(SP.storyTitles.length === P_STORY_TITLES.length && SP.storyTitles.length > 0,
+   '章节标题 ' + SP.storyTitles.length + ' 条');
+// 本节在「显示子场景」状态下（上面全表模式），所以期望 = 完整 storyOrder
+const storyKeys = P_STORY.map(x => String(x[0]));
+ok(JSON.stringify(SP.view.map(i => i.key)) === JSON.stringify(storyKeys),
+   '列表顺序 = 剧情顺序（前 3: ' + SP.view.slice(0, 3).map(i => i.name).join(' / ') + '）');
+// 切到 id 顺序
+SP.toggleSort();
+ok(SP.sortMode === 'id', 'F3 切到 id 顺序');
+ok(JSON.stringify(SP.view.map(i => i.key)) === JSON.stringify(SP.items.map(i => i.key)),
+   'id 顺序下与 items 顺序一致');
+SP.toggleSort();
+ok(SP.sortMode === 'story', 'F3 再按切回剧情顺序');
+// 章节信息
+const first = SP.view[0];
+const chNo = SP.chapterOf(first);
+ok(chNo === P_STORY[0][1], '首项章节号 = ' + chNo);
+ok(SP.chapterTitle(chNo).length > 0, '章节标题可取到: 「' + SP.chapterTitle(chNo) + '」');
+ok(SP.orderOf(first) < SP.orderOf(SP.view[SP.view.length - 1]), 'orderOf 递增');
+ok(SP.orderOf({ key: '不存在的键' }) === 1000000, '未定位场景的 orderOf 排到最后');
+// 与筛选/子场景叠加
+SP.setFilter('h');
+const expectH = storyKeys.filter(k => { const it = SP.items.find(i => i.key === k); return it && it.tag === 'h'; });
+ok(JSON.stringify(SP.view.map(i => i.key)) === JSON.stringify(expectH),
+   '仅H + 剧情顺序 同时生效（' + SP.view.length + ' 项）');
+SP.setFilter('all');
+// 隐藏子场景后，应当就是剧情顺序去掉子场景
+SP.toggleSub();
+const expectNoSub = storyKeys.filter(k => !P_SUBS[k]);
+ok(JSON.stringify(SP.view.map(i => i.key)) === JSON.stringify(expectNoSub),
+   '隐藏子场景后 = 剧情顺序去掉子场景（' + SP.view.length + ' 项）');
+SP.toggleSub();
+ok(SP.showSub === true, '恢复显示子场景');
+// 连播跟随剧情顺序
+reset();
+SP.auto = true; SP.playing = true; SP.grace = 0; SP.wait = 0; SP.last = 0;
+reserved = [];
+SP.update();
+// 剧情顺序里下一项可能是地图场景（走传送+event.start），也可能是公共事件
+const progressed = reserved.length === 1 || SP.pending !== null || transferred.length === 1;
+ok(progressed, '剧情顺序下连播推进正常（' + (reserved.length ? '公共事件 #' + reserved[0]
+   : (SP.pending ? '地图场景传送中' : '已传送')) + '）');
+const landedKey = SP.view[SP.last].key;
+ok(SP.orderOf(SP.view[SP.last]) > SP.orderOf(SP.view[0]), '连播落点在剧情更靠后的位置: ' + SP.view[SP.last].name);
+SP.auto = false; SP.playing = false;
+reset();          // 连播可能触发传送，清掉 pending
+SP.last = -1;
 
 console.log('== 子场景（嵌套）==');
 const SUB_KEYS = Object.keys(P_SUBS);
@@ -516,6 +571,7 @@ w._data = SP.view;
 w._drawn = []; w.drawItem(posSub);
 ok(w._drawn[0].t.includes('⊂子场景'), '子场景标 ⊂子场景: ' + JSON.stringify(w._drawn[0].t.trim().slice(-20)));
 ok(w._drawn[1].t.includes('⊂ 被「'), '第二行显示被谁调用: ' + JSON.stringify(w._drawn[1].t.slice(0, 34)));
+ok(w._drawn[1].t.includes('剧情'), '第二行同时带剧情章节: ' + JSON.stringify(w._drawn[1].t.slice(0, 24)));
 SP.showSub = true; SP.applyFilter(); w._data = SP.view;
 ok(w.itemHeight() === 72, 'itemHeight = 72（两行）');
 

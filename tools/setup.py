@@ -46,14 +46,16 @@ DEFAULT_EXCLUDE = '410,411,1894,1895,1896'
 DEFAULT_MODE = 'auto'
 DEFAULT_MIN_PICS = 4
 DEFAULT_KEYS = {'openKey': '118', 'nextKey': '119', 'autoKey': '120',
-                'msgKey': '121', 'autoDelay': '60', 'msgDelay': '45', 'subKey': '115'}
+                'msgKey': '121', 'autoDelay': '60', 'msgDelay': '45', 'subKey': '115',
+                'sortKey': '114'}
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 
 # 复用 scan_game 的扫描/挑选逻辑，避免两个工具口径不一致
 sys.path.insert(0, HERE)
 import nesting
-import scan_game  # noqa: E402
+import scan_game
+import story_order  # noqa: E402
 
 
 def log(*args):
@@ -146,19 +148,24 @@ def find_entry(entries, name):
     return None, None, None
 
 
-def build_entry(scenes, missing, existing_params=None, map_scenes=None, tags=None, subs=None):
+def build_entry(scenes, missing, existing_params=None, map_scenes=None, tags=None, subs=None,
+                story=None):
     map_scenes = map_scenes or []
     tags = tags or {}
     subs = subs or {}
+    story = story or {'order': [], 'chapters': []}
     params = dict(DEFAULT_KEYS)
     if existing_params:
         params.update({k: v for k, v in existing_params.items()
-                       if k not in ('sceneList', 'missingAssets', 'mapScenes', 'tags', 'subScenes')})
+                       if k not in ('sceneList', 'missingAssets', 'mapScenes', 'tags',
+                                    'subScenes', 'storyOrder', 'storyChapters')})
     params['sceneList'] = json.dumps(scenes, ensure_ascii=False, separators=(',', ':'))
     params['missingAssets'] = json.dumps(missing, ensure_ascii=False, separators=(',', ':'))
     params['mapScenes'] = json.dumps(map_scenes, ensure_ascii=False, separators=(',', ':'))
     params['tags'] = json.dumps(tags, ensure_ascii=False, separators=(',', ':'))
     params['subScenes'] = json.dumps(subs, ensure_ascii=False, separators=(',', ':'))
+    params['storyOrder'] = json.dumps(story['order'], ensure_ascii=False, separators=(',', ':'))
+    params['storyChapters'] = json.dumps(story['chapters'], ensure_ascii=False, separators=(',', ':'))
     ordered = {'sceneList': params.pop('sceneList'),
                'openKey': params.pop('openKey', '118'),
                'nextKey': params.pop('nextKey', '119'),
@@ -168,13 +175,16 @@ def build_entry(scenes, missing, existing_params=None, map_scenes=None, tags=Non
                'msgDelay': params.pop('msgDelay', '45'),
                'filterKey': params.pop('filterKey', '117'),
                'subKey': params.pop('subKey', '115'),
+               'sortKey': params.pop('sortKey', '114'),
                'missingAssets': params.pop('missingAssets'),
                'mapScenes': params.pop('mapScenes'),
                'tags': params.pop('tags'),
-               'subScenes': params.pop('subScenes')}
+               'subScenes': params.pop('subScenes'),
+               'storyOrder': params.pop('storyOrder'),
+               'storyChapters': params.pop('storyChapters')}
     ordered.update(params)          # 保留用户自己加的其它键
     return {'name': PLUGIN_NAME, 'status': True,
-            'description': 'v2.1.0 场景速播器：F7 场景列表 / F8 下一个 / F9 自动连播 / F10 自动推进对话 / F4 子场景',
+            'description': 'v2.2.0 场景速播器：F7 场景列表 / F8 下一个 / F9 自动连播 / F10 自动推进对话 / F3 排序 / F4 子场景',
             'parameters': ordered}
 
 
@@ -262,6 +272,11 @@ def main():
         % (sum(1 for v in tags.values() if v == 'h'),
            sum(1 for v in tags.values() if v == 'story'),
            sum(1 for v in tags.values() if v == 'misc')))
+    story = story_order.compute(www)
+    log('剧情顺序       : %d 个场景已定位（%d 个剧情章节），未定位 %d 个'
+        % (story['placed'], len(story['chapters']), len(story['unplaced'])))
+    if story['unplaced']:
+        log('   未定位        : %s' % '、'.join(story['unplaced'][:8]))
     subs, sub_info = nesting.analyze(www, scenes, map_scenes)
     log('嵌套场景       : %d 个（被别的场景通过「调用公共事件」播到，默认隐藏；剩余 %d 个顶层场景）'
         % (len(subs), len(scenes) - len(subs) + len(map_scenes)))
@@ -303,7 +318,7 @@ def main():
     entries, array_end = iter_entries(text)
     existing, _, _ = find_entry(entries, PLUGIN_NAME)
     entry = build_entry(scenes, missing, existing['parameters'] if existing else None,
-                        map_scenes, tags, subs)
+                        map_scenes, tags, subs, story)
     entry_action = 'update' if existing else 'add'
     # 用语义比较判断是否需要写入：避免因空白/键序/description 措辞差异而反复重写
     entry_changed = (existing is None) or (existing != entry)

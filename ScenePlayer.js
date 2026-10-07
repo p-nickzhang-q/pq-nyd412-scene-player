@@ -2,7 +2,7 @@
 // ScenePlayer.js
 //=============================================================================
 /*:
- * @plugindesc v2.1.0 场景速播器：场景列表(F7) / 单键下一个(F8) / 自动连播(F9) / 自动推进对话(F10)
+ * @plugindesc v2.2.0 场景速播器：场景列表(F7) / 单键下一个(F8) / 自动连播(F9) / 自动推进对话(F10)
  * @author custom
  *
  * @param sceneList
@@ -64,6 +64,24 @@
  * @desc {"被调用的场景键":[调用者键,...]}，由 tools/nesting.py 生成。键为公共事件 id（"295"）或地图场景（"m8:3"）
  * @type string
  * @default {}
+ *
+ * @param sortKey
+ * @text 排序切换按键(keyCode)
+ * @desc 默认 114 = F3。剧情顺序 ↔ 事件 id 顺序
+ * @type number
+ * @default 114
+ *
+ * @param storyOrder
+ * @text 剧情顺序表(JSON)
+ * @desc [[场景键,剧情章节号],...]，按剧情先后排列。由 tools/story_order.py 依游戏自带攻略生成
+ * @type string
+ * @default []
+ *
+ * @param storyChapters
+ * @text 剧情章节标题(JSON)
+ * @desc ["任务：找到铁匠的狗",...]，索引对应 storyOrder 里的章节号
+ * @type string
+ * @default []
  *
  * @param mapScenes
  * @text 地图事件场景(JSON)
@@ -173,12 +191,15 @@
     var MISSING = parseMissing(params['missingAssets']);
     var TAGS = parseTags(params['tags']);
     var SUBS = parseSubs(params['subScenes']);
+    var STORY = parseStory(params['storyOrder']);
+    var STORY_TITLES = parseTitles(params['storyChapters']);
     var KEY_OPEN = toInt(params['openKey'], 118);
     var KEY_NEXT = toInt(params['nextKey'], 119);
     var KEY_AUTO = toInt(params['autoKey'], 120);
     var KEY_MSG = toInt(params['msgKey'], 121);
     var KEY_FILTER = toInt(params['filterKey'], 117);   // F6
     var KEY_SUB = toInt(params['subKey'], 115);         // F4
+    var KEY_SORT = toInt(params['sortKey'], 114);       // F3
     var AUTO_DELAY = toInt(params['autoDelay'], 60);
     var MSG_DELAY = toInt(params['msgDelay'], 45);
 
@@ -248,6 +269,34 @@
         return out;
     }
 
+    // 剧情顺序：[[场景键, 章节号], ...]（按剧情先后）+ 章节标题表
+    function parseStory(raw) {
+        var data, out = { index: {}, chapter: {} };
+        try {
+            data = JSON.parse(raw || '[]');
+        } catch (e) {
+            console.error(PLUGIN + ': storyOrder 不是合法 JSON', e);
+            return out;
+        }
+        if (!(data instanceof Array)) { return out; }
+        for (var i = 0; i < data.length; i++) {
+            var it = data[i];
+            if (!(it instanceof Array) || it.length < 1) { continue; }
+            out.index[String(it[0])] = i;
+            out.chapter[String(it[0])] = it[1] || null;
+        }
+        return out;
+    }
+
+    function parseTitles(raw) {
+        try {
+            var d = JSON.parse(raw || '[]');
+            return (d instanceof Array) ? d.map(String) : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
     var TAG_LABEL = { h: 'H', story: '剧情', misc: '杂项' };
     var FILTERS = ['all', 'h', 'story', 'misc'];
     var FILTER_LABEL = { all: '全部', h: '仅H', story: '仅剧情', misc: '仅杂项' };
@@ -290,6 +339,9 @@
     SP.tags = TAGS;
     SP.subs = SUBS;        // 子场景清单（被其他场景调用过）
     SP.showSub = false;    // 默认隐藏子场景
+    SP.story = STORY;      // { index: {键: 顺序}, chapter: {键: 章节号} }
+    SP.storyTitles = STORY_TITLES;
+    SP.sortMode = (Object.keys(STORY.index).length ? 'story' : 'id');   // 默认按剧情
     SP.items = buildItems();
     SP.filter = 'all';
     SP.view = [];
@@ -343,6 +395,13 @@
                 out.push(it);
             }
         }
+        if (SP.sortMode === 'story') {
+            out.sort(function(a, b) {
+                var ia = SP.orderOf(a), ib = SP.orderOf(b);
+                if (ia !== ib) { return ia - ib; }
+                return 0;
+            });
+        }
         SP.view = out;
         // 尽量把光标和「上次播放」定位回原场景
         SP.index = 0;
@@ -370,6 +429,30 @@
 
     SP.itemOf = function(i) {
         return SP.view[i];
+    };
+
+    // 剧情顺序里的位置；没定位到的排到最后（保持 id 顺序稳定）
+    SP.orderOf = function(it) {
+        var i = SP.story.index[it.key];
+        return (i === undefined) ? 1000000 : i;
+    };
+
+    SP.chapterOf = function(it) {
+        return SP.story.chapter[it.key] || null;
+    };
+
+    SP.chapterTitle = function(no) {
+        var t = SP.storyTitles[no - 1];
+        return t ? t.replace(/^任务\s*\d*[：:]\s*/, '') : '';
+    };
+
+    SP.toggleSort = function() {
+        SP.sortMode = (SP.sortMode === 'story') ? 'id' : 'story';
+        SP.applyFilter();
+        SP.refreshHelp();
+        SP.refreshList();
+        SP.toast('排序：' + (SP.sortMode === 'story'
+            ? '剧情顺序（' + SP.storyTitles.length + ' 个剧情章节）' : '事件 id 顺序'));
     };
 
     // 子场景（被别的场景播到的）总数
@@ -882,17 +965,27 @@
         this.drawText(no + ' ' + tag + where + ' #' + (it.kind === 'map' ? it.key : it.id)
             + '  ' + it.name + (miss.length ? '  ⚠缺素材' : '')
             + (it.subOf ? '  ⊂子场景' : ''), rect.x, rect.y, rect.width);
-        var sub = miss.length ? ('缺 ' + miss.length + ' 项（图/影片），需 Spicy Mod：' + miss[0]) : it.orig;
+        // 第二行按顺序拼：剧情章节 → 子场景 → 缺素材/原名
+        var parts = [];
+        var chNo = SP.chapterOf(it);
+        if (SP.sortMode === 'story' && chNo) {
+            var ct = SP.chapterTitle(chNo);
+            parts.push('剧情' + chNo + (ct ? ' ' + ct : ''));
+        }
         if (it.subOf) {
             var callers = [];
             for (var ci = 0; ci < it.subOf.length && ci < 2; ci++) {
                 callers.push(SP.nameOfKey(it.subOf[ci]));
             }
-            // 既缺素材又是子场景时两条信息都要留（缺素材那句在后面，别被盖掉）
-            sub = '⊂ 被「' + callers.join('」「') + '」调用'
-                + (it.subOf.length > 2 ? ' 等 ' + it.subOf.length + ' 处' : '')
-                + (miss.length ? '  ·  ' + sub : '');
+            parts.push('⊂ 被「' + callers.join('」「') + '」调用'
+                + (it.subOf.length > 2 ? ' 等 ' + it.subOf.length + ' 处' : ''));
         }
+        if (miss.length) {
+            parts.push('缺 ' + miss.length + ' 项（图/影片），需 Spicy Mod：' + miss[0]);
+        } else if (it.orig) {
+            parts.push(it.orig);
+        }
+        var sub = parts.join('   ·   ');
         if (sub) {
             var op = this.contents.paintOpacity;
             this.contents.paintOpacity = 130;
@@ -944,6 +1037,7 @@
             if (!SP.canPlay(i)) { blocked++; }
         }
         return 'F6 筛选：' + FILTER_LABEL[SP.filter] + '（' + SP.view.length + '/' + SP.items.length + ' 个）'
+            + '   F3 排序：' + (SP.sortMode === 'story' ? '剧情' : '按ID')
             + '   F4 子场景：' + (SP.showSub ? '显示' : '隐藏') + '（共 ' + SP.countSub() + ' 个）'
             + '   ↑↓ 选择  ←→ 跳10  PgUp/PgDn 翻页  Enter 播放  Esc 关闭'
             + (blocked ? '   ⚠ 缺素材 ' + blocked + ' 个已跳过' : '')
@@ -1004,7 +1098,8 @@
         if (event.ctrlKey || event.altKey || event.metaKey) { return; }
         var code = event.keyCode;
         if (code !== KEY_OPEN && code !== KEY_NEXT && code !== KEY_AUTO
-            && code !== KEY_MSG && code !== KEY_FILTER && code !== KEY_SUB) { return; }
+            && code !== KEY_MSG && code !== KEY_FILTER && code !== KEY_SUB
+            && code !== KEY_SORT) { return; }
         var scene = SceneManager._scene;
         var inMap = (scene instanceof Scene_Map);
         var inList = (scene instanceof Scene_ScenePlayer);
@@ -1013,6 +1108,13 @@
             if (inMap || inList) {
                 event.preventDefault();
                 SP.cycleFilter();
+            }
+            return;
+        }
+        if (code === KEY_SORT) {
+            if (inMap || inList) {
+                event.preventDefault();
+                SP.toggleSort();
             }
             return;
         }
@@ -1053,10 +1155,11 @@
     }
 
     SP.applyFilter();
-    console.log('[ScenePlayer] v2.1.0 已加载：公共事件 ' + SCENES.length + ' + 地图事件 '
+    console.log('[ScenePlayer] v2.2.0 已加载：公共事件 ' + SCENES.length + ' + 地图事件 '
         + MAP_SCENES.length + ' = ' + SP.items.length + ' 个'
         + '（H ' + SP.countByTag('h') + ' / 剧情 ' + SP.countByTag('story')
         + ' / 杂项 ' + SP.countByTag('misc') + '）'
         + '，已隐藏子场景 ' + SP.countSub() + ' 个'
-        + '  | F4 子场景  F6 筛选  F7 列表  F8 下一个  F9 连播  F10 自动对话');
+        + '，排序 ' + (SP.sortMode === 'story' ? '按剧情（' + SP.storyTitles.length + ' 章）' : '按 id')
+        + '  | F3 排序  F4 子场景  F6 筛选  F7 列表  F8 下一个  F9 连播  F10 自动对话');
 })();
