@@ -36,6 +36,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import nesting  # noqa: E402
+import quest_names as QN  # noqa: E402
 
 # 顺序 = 剧情顺序：全文攻略在前，补丁攻略按版本递增接在后面
 WALKTHROUGHS = [
@@ -244,21 +245,189 @@ def chapter_of(tokens, idx):
     return min(hits)
 
 
+def loose_json(text):
+    r"""任务参数里偶有非法转义（`\N[6]`），修一下再解析。"""
+    return json.loads(re.sub(r'\\(?!["\\\\/bfnrtu])', r'\\\\', text))
+
+
+def load_quests(www):
+    """
+    读 YEP_QuestJournal + YEP_X_MoreQuests1 里的任务定义（共 215 个）。
+    任务编号就是剧情轴 —— 它和攻略里 `任务212：是个男孩` 的编号一致。
+    """
+    entries, _ = nesting.load_plugins(os.path.join(www, 'js', 'plugins.js'))
+    quests = {}
+    for e in entries:
+        if 'Quest' not in (e.get('name') or ''):
+            continue
+        for k, v in (e.get('parameters') or {}).items():
+            m = re.match(r'Quest (\d+)$', k)
+            if not m or not str(v).strip():
+                continue
+            try:
+                q = json.loads(v)
+            except ValueError:
+                try:
+                    q = loose_json(v)
+                except ValueError:
+                    continue
+            if isinstance(q, dict):
+                quests[int(m.group(1))] = q
+    return quests
+
+
+def cjk_words(text, lo=2, hi=5):
+    out = set()
+    for run in re.findall(r'[\u4e00-\u9fff]+', text):
+        for n in range(lo, hi + 1):
+            for i in range(len(run) - n + 1):
+                out.add(run[i:i + n])
+    return out
+
+
+def prepare_quests(quests):
+    """预计算每个任务的文本、token 集合。"""
+    out = {}
+    for no, q in quests.items():
+        title = str(q.get('Title', '') or '').strip()
+        frm = str(q.get('From', '') or '').strip()
+        loc = str(q.get('Location', '') or '').strip()
+        desc = str(q.get('Description', '') or '')
+        if isinstance(q.get('Description'), list):
+            desc = ' '.join(str(x) for x in q['Description'])
+        alltext = ' '.join([title, frm, loc, desc])
+        cn = set()
+        for run in re.findall(r'[\u4e00-\u9fff]{2,}', alltext):
+            for n in (2, 3, 4):
+                for i in range(len(run) - n + 1):
+                    cn.add(run[i:i + n])
+        out[no] = {'title': title, 'from': frm, 'loc': loc, 'desc': desc,
+                   'all': alltext, 'low': alltext.lower(), 'concepts': cn,
+                   'title_low': title.lower(), 'from_low': frm.lower(),
+                   'loc_low': loc.lower(), 'desc_low': desc.lower()}
+    return out
+
+
+def camel(x):
+    return [w.lower() for w in re.findall(r'[A-Z]?[a-z]+|[A-Z]+(?![a-z])', str(x)) if len(w) >= 4]
+
+
+def scene_signals(name, cmd_list, sw_name, var_name, extra_conds=()):
+    """把一个场景拆成用于匹配任务的几组信号。"""
+    head = head_of(name)
+    sub = re.split(r'[ ·]', name)[1] if ' · ' in name else ''
+    sub = re.sub(r'\d+', '', sub).strip(' （）()')
+
+    alias = [head.lower()] + [a.lower() for a in QN.NAMES.get(head, [])]
+    loc_alias = [head.lower()] + [a.lower() for a in QN.LOCATIONS.get(head, [])]
+
+    pics, ids = [], []
+    for c in cmd_list:
+        code = c.get('code')
+        p = c.get('parameters') or []
+        if code == 231 and len(p) > 1:
+            pics += camel(p[1])
+        elif code == 111 and len(p) >= 2 and isinstance(p[1], int):
+            ids.append(('s' if p[0] == 0 else 'v', p[1]))
+    ids += [tuple(x) for x in extra_conds]
+
+    req = []
+    own = []
+    head_low = head.lower()
+    alts = [head_low] + [a.lower() for a in QN.NAMES.get(head, [])]
+    for kind, i in sorted(set(ids)):
+        nm = sw_name[i] if kind == 's' and 0 <= i < len(sw_name) else \
+             (var_name[i] if kind == 'v' and 0 <= i < len(var_name) else '')
+        req += camel(nm)
+        if kind == 'v' and nm and any(a and a in nm.lower() for a in alts):
+            own.append(i)
+    # 只取变量 id（开关和变量是两套编号空间，混在一起排序没有意义）
+    varids = [i for k_, i in ids if k_ == 'v']
+    concepts = set()
+    for t in req:
+        for cn in QN.CONCEPTS.get(t, []):
+            concepts.add(cn)
+    return {'head': head, 'sub': sub, 'alias': alias, 'loc_alias': loc_alias,
+            'subtok': cjk_words(sub), 'pics': pics, 'concepts': concepts, 'req': req,
+            # 用「最大」而不是最小：一个场景会测多个变量，取最小容易被无关的低位变量带偏
+            'own_max': max(own) if own else 999999,
+            'var_max': max(varids) if varids else 999999}
+
+
+def concept_weights(Q):
+    """概念词 -> 权重。在越少的任务里出现，越能定位（类 IDF）。"""
+    w = {}
+    words = set()
+    for q in Q.values():
+        for cn in q['concepts']:
+            words.add(cn)
+    for cn in words:
+        df = sum(1 for q in Q.values() if cn in q['all'])
+        if df <= 2:
+            w[cn] = 6
+        elif df <= 5:
+            w[cn] = 5
+        elif df <= 12:
+            w[cn] = 3
+        elif df <= 25:
+            w[cn] = 1
+        else:
+            w[cn] = 0          # 太泛（哥布林/悬赏/怀孕…），不参与定位
+    return w
+
+
+def score_quest(sig, q, cw):
+    """场景与某个任务的契合度。分越高越像。"""
+    s = 0
+    sub = sig['sub']
+    if sub and len(sub) >= 2:
+        if sub in q['title']:
+            s += 10
+        elif sub in q['desc']:
+            s += 3
+    for a in sig['alias']:
+        if a in q['from_low']:
+            s += 5
+        if a in q['title_low']:
+            s += 3
+        if a in q['desc_low']:
+            s += 2
+    for a in sig['loc_alias']:
+        if a in q['loc_low']:
+            s += 3
+        if a in q['desc_low']:
+            s += 1
+    # 概念词要**和人物一起**出现在同一个任务里才算数 ——
+    # 单看概念会到处误配（"怀孕"在几十个任务里都有），
+    # 但「维多利亚 + 怀孕」这种组合就很能定位。
+    char_here = any(a in q['low'] for a in sig['alias'])
+    for cn in sig['concepts']:
+        if cn not in q['all']:
+            continue
+        if char_here:
+            s += max(cw.get(cn, 0), 2)
+        elif cw.get(cn, 0) >= 5:
+            s += cw[cn]
+    for t in sig['pics']:
+        if len(t) >= 5 and t in q['low']:
+            s += 1
+    return s
+
+
 def compute(game_dir, verbose=False, scenes=None, map_scenes=None):
     """
-    返回 {'order': [[场景键, 章节号], ...], 'chapters': [标题, ...], ...}。
+    返回 {'order': [[场景键, 任务号], ...], 'chapters': [任务标题, ...], ...}。
     order 的顺序就是剧情顺序（未定位的排在最后）。
     """
     www = nesting.find_www(game_dir)
     game = os.path.dirname(www)
-    chapters = load_chapters(os.path.join(game, 'Walkthroughs'))
-    if not chapters:
-        raise SystemExit('读不到任何任务小节（缺 Walkthroughs/*.zh.md？）')
-    idx = build_index(chapters)
+    quests = load_quests(www)
+    if not quests:
+        raise SystemExit('读不到任务定义（缺 YEP_QuestJournal？）')
+    Q = prepare_quests(quests)
+    CW = concept_weights(Q)
 
     if scenes is None or map_scenes is None:
-        # 没传就用 plugins.js 里现有的（注意：setup.py 必须在写入新参数**之前**传入，
-        # 否则会读到上一次的旧清单，算出多余的条目）
         entries, _ = nesting.load_plugins(os.path.join(www, 'js', 'plugins.js'))
         sp = [e for e in entries if e.get('name') == 'ScenePlayer'][0]
         params = sp.get('parameters', {})
@@ -272,8 +441,30 @@ def compute(game_dir, verbose=False, scenes=None, map_scenes=None):
     sysj = json.load(open(os.path.join(www, 'data', 'System.json'), encoding='utf-8'))
     sw_name = sysj.get('switches', [])
     var_name = sysj.get('variables', [])
-    map_info = {m['id']: m['name'] for m in
-                json.load(open(os.path.join(www, 'data', 'MapInfos.json'), encoding='utf-8')) if m}
+
+    # 调用某公共事件的地图事件，其「页条件」也是这个场景的前置条件
+    caller_conds = {}
+    for fn in os.listdir(os.path.join(www, 'data')):
+        if not re.match(r'Map\d+\.json$', fn):
+            continue
+        try:
+            data = json.load(open(os.path.join(www, 'data', fn), encoding='utf-8'))
+        except (IOError, ValueError):
+            continue
+        for ev in data.get('events', []):
+            if not ev:
+                continue
+            for pg in ev.get('pages', []):
+                c = pg.get('conditions') or {}
+                ids = []
+                for vk, ik in (('switch1Valid', 'switch1Id'), ('switch2Valid', 'switch2Id')):
+                    if c.get(vk) and isinstance(c.get(ik), int):
+                        ids.append(('s', c[ik]))
+                if c.get('variableValid') and isinstance(c.get('variableId'), int):
+                    ids.append(('v', c['variableId']))
+                for cc in pg.get('list', []):
+                    if cc.get('code') == 117 and cc.get('parameters'):
+                        caller_conds.setdefault(cc['parameters'][0], []).extend(ids)
 
     repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     ov_path = os.path.join(repo, 'params', 'storyOverrides.json')
@@ -281,83 +472,59 @@ def compute(game_dir, verbose=False, scenes=None, map_scenes=None):
     if os.path.isfile(ov_path):
         overrides = {str(k): v for k, v in json.load(open(ov_path, encoding='utf-8')).items()}
 
-    heads = collections.Counter(head_of(x[1]) for x in scenes)
-    heads.update(head_of(m[4]) for m in map_scenes)
-    entities = {h for h, c in heads.items() if c >= 2 and len(h) >= 2}
-
     rows = []
     for s in scenes:
         key, name = str(s[0]), s[1]
-        orig = s[2] if len(s) > 2 else ''
         e = by_id.get(s[0]) or {}
-        sw, va = cond_switches(e.get('list', []))
-        req_tokens = []
-        for i_ in sorted(sw):
-            req_tokens += camel_tokens(sw_name[i_] if i_ < len(sw_name) else '')
-        for i_ in sorted(va):
-            req_tokens += camel_tokens(var_name[i_] if i_ < len(var_name) else '')
-        pics = []
-        for c in (e.get('list') or []):
-            if c.get('code') == 231 and len(c.get('parameters') or []) > 1:
-                for w in camel_tokens(c['parameters'][1]):
-                    if w.lower() not in [x.lower() for x in pics]:
-                        pics.append(w)
-
-        nm_ch, nm_tok = chapter_of(name_tokens(name, orig, entities), idx)
-        rq_ch, rq_tok = chapter_of(req_tokens, idx)
-        pc_ch, pc_tok = chapter_of(pics, idx)
-        base = nm_ch or pc_ch
-        lower = rq_ch or pc_ch
-        ch = max(base, lower) if (base and lower) else (base or lower)
-        evidence = []
-        if nm_tok:
-            evidence.append('名字「%s」' % nm_tok)
-        if rq_tok:
-            evidence.append('前置「%s」' % rq_tok)
-        if pc_tok and not nm_tok:
-            evidence.append('图片「%s」' % pc_tok)
+        sig = scene_signals(name, e.get('list', []), sw_name, var_name,
+                            caller_conds.get(s[0], []))
+        best, best_score = None, 0
+        for no, q in Q.items():
+            sc = score_quest(sig, q, CW)
+            if sc > best_score or (sc == best_score and sc > 0 and best is not None and no < best):
+                best, best_score = no, sc
+        ch = best
+        ev = []
+        if best:
+            ev.append('任务%d「%s」' % (best, Q[best]['title'][:14]))
+            hitc = [cn for cn in sig['concepts'] if cn in Q[best]['all']]
+            if hitc:
+                ev.append('概念' + '、'.join(sorted(hitc)[:2]))
         rows.append({'key': key, 'kind': 'ce', 'id': s[0], 'name': name, 'ord_id': s[0],
-                     'line': line_of(name), 'chapter': ch, 'evidence': evidence,
-                     'sub': suffix_no(name)})
+                     'line': line_of(name), 'chapter': ch, 'evidence': ev,
+                     'sub': suffix_no(name), 'score': best_score,
+                     'own_max': sig['own_max'], 'var_max': sig['var_max']})
 
-    ce_chapter = {r['key']: r['chapter'] for r in rows if r['kind'] == 'ce'}
-    listed = {str(x[0]) for x in scenes}
+    # 地图场景（若收录）：用地图官方名/图片名定位，并用它调用的公共事件的任务号作下界
+    ce_ch = {r['key']: r['chapter'] for r in rows if r['kind'] == 'ce'}
+    map_info = {m['id']: m['name'] for m in
+                json.load(open(os.path.join(www, 'data', 'MapInfos.json'), encoding='utf-8')) if m}
     for m in map_scenes:
         key = 'm%d:%d' % (m[0], m[1])
         name = m[4]
-        toks = []
-        loc = re.split(r'[ ·]', name)[0].strip()
-        if not (loc.startswith('Map') and loc[3:].isdigit()):
-            toks.append(loc)
-        off = map_info.get(m[0])
-        if off and off not in toks:
-            toks.append(off)
         lst = nesting.map_event_list(www, m[0], m[1]) or []
-        for c in lst:
-            if c.get('code') == 231 and len(c.get('parameters') or []) > 1:
-                for w in camel_tokens(c['parameters'][1]):
-                    if w.lower() not in [x.lower() for x in toks]:
-                        toks.append(w)
-        nm_ch, nm_tok = chapter_of([t for t in toks if is_entity(t, entities) or
-                                    re.search(r'[A-Za-z]', t)], idx)
-        called = []
-        for c in lst:
-            if c.get('code') == 117:
-                pp = c.get('parameters') or []
-                if pp and str(pp[0]) in listed and ce_chapter.get(str(pp[0])):
-                    called.append(ce_chapter[str(pp[0])])
-        lower = max(called) if called else None
-        ch = max([x for x in (nm_ch, lower) if x]) if (nm_ch or lower) else None
+        sig = scene_signals(name, lst, sw_name, var_name, caller_conds.get(-1, []))
+        off = map_info.get(m[0])
+        if off:
+            sig['alias'] = sig['alias'] + [off.lower()]
+            sig['loc_alias'] = sig['loc_alias'] + [off.lower()]
+        best, best_score = None, 0
+        for no, q in Q.items():
+            sc = score_quest(sig, q, CW)
+            if sc > best_score:
+                best, best_score = no, sc
+        called = [ce_ch[str(c['parameters'][0])] for c in lst
+                  if c.get('code') == 117 and c.get('parameters')
+                  and str(c['parameters'][0]) in ce_ch and ce_ch[str(c['parameters'][0])]]
+        ch = best
         ev = []
-        if nm_tok:
-            ev.append('地点「%s」' % nm_tok)
-        if lower:
-            ev.append('调用场景的章节 %d' % lower)
+        if best:
+            ev.append('任务%d「%s」' % (best, Q[best]['title'][:14]))
         rows.append({'key': key, 'kind': 'map', 'id': key, 'name': name,
                      'ord_id': m[0] * 10000 + m[1], 'line': line_of(name),
-                     'chapter': ch, 'evidence': ev, 'sub': m[1]})
+                     'chapter': ch, 'evidence': ev, 'sub': m[1], 'score': best_score,
+                     'own_min': sig['own_min'], 'all_min': sig['all_min']})
 
-    # 还没定位的：如果它被某个已定位的场景调用（是子场景），就跟着调用者
     subs, _info = nesting.analyze(www, scenes, map_scenes)
     by_key = {r['key']: r for r in rows}
     for r in rows:
@@ -377,23 +544,33 @@ def compute(game_dir, verbose=False, scenes=None, map_scenes=None):
 
     placed = [r for r in rows if r['chapter']]
     unplaced = [r for r in rows if not r['chapter']]
-    # 章节内：先按「人物组」（用该组最早的事件 id，尊重作者创建顺序），
-    # 再按子线名、名字里的编号、事件 id。
+    # 同一任务内：先按人物组（该组最早事件 id，尊重创建顺序），再子线、编号、id
     gmin = {}
     for r in placed:
         k = (r['chapter'], head_of(r['name']))
         gmin[k] = min(gmin.get(k, 1 << 30), r['ord_id'])
+    # 同一个任务里：先按人物分组（尊重作者创建顺序），
+    # 组内按「人物专属变量 id -> 全部变量 id」排 —— 作者写场景的顺序基本跟着剧情走
+    # （实测 Victoria: 134 剧情01~03 -> 199 怀孕 -> 344 自慰/剧情灵药 -> 419 内衣怀孕）。
     placed.sort(key=lambda r: (r['chapter'], gmin[(r['chapter'], head_of(r['name']))],
-                               r['line'], r['sub'], r['ord_id']))
+                               r['own_max'], r['var_max'], r['line'], r['sub'], r['ord_id']))
     unplaced.sort(key=lambda r: r['ord_id'])
     if verbose:
-        print('攻略章节 %d 个，已定位 %d / %d，未定位 %d'
-              % (len(chapters), len(placed), len(rows), len(unplaced)))
+        print('任务定义 %d 个，已定位 %d / %d，未定位 %d'
+              % (len(quests), len(placed), len(rows), len(unplaced)))
     return {'order': [[r['key'], r['chapter']] for r in placed + unplaced],
-            'chapters': [c['title'] for c in chapters],
+            'chapters': chapters_array(Q),
             'placed': len(placed),
             'unplaced': [r['key'] for r in unplaced],
             'rows': placed + unplaced}
+
+
+def chapters_array(Q):
+    """按任务号定位的标题数组（索引 = 任务号 - 1）。"""
+    arr = [''] * (max(Q) if Q else 0)
+    for n, q in Q.items():
+        arr[n - 1] = ('%d %s' % (n, q['title'])).strip()
+    return arr
 
 
 def md_lines(chapters, rows):

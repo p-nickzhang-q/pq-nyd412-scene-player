@@ -2,7 +2,7 @@
 // ScenePlayer.js
 //=============================================================================
 /*:
- * @plugindesc v2.3.0 场景速播器：场景列表(F7) / 单键下一个(F8) / 自动连播(F9) / 自动推进对话(F10)
+ * @plugindesc v2.4.0 场景速播器：场景列表(F7) / 单键下一个(F8) / 自动连播(F9) / 自动推进对话(F10)
  * @author custom
  *
  * @param sceneList
@@ -73,13 +73,13 @@
  *
  * @param storyOrder
  * @text 剧情顺序表(JSON)
- * @desc [[场景键,剧情章节号],...]，按剧情先后排列。由 tools/story_order.py 依游戏自带攻略生成
+ * @desc [[场景键,任务号],...]，按剧情先后排列。由 tools/story_order.py 依游戏自带任务定义生成
  * @type string
  * @default []
  *
  * @param storyChapters
  * @text 剧情章节标题(JSON)
- * @desc ["任务：找到铁匠的狗",...]，索引对应 storyOrder 里的章节号
+ * @desc ["13 唤醒市长",...]，索引对应 storyOrder 里的任务号
  * @type string
  * @default []
  *
@@ -443,7 +443,8 @@
 
     SP.chapterTitle = function(no) {
         var t = SP.storyTitles[no - 1];
-        return t ? t.replace(/^任务\s*\d*[：:]\s*/, '') : '';
+        // 标题形如 "13 唤醒市长" / "任务212：是个男孩"，剥掉编号前缀
+        return t ? t.replace(/^(?:任务\s*)?\d+\s*[：:]?\s*/, '') : '';
     };
 
     SP.toggleSort = function() {
@@ -970,7 +971,7 @@
         var chNo = SP.chapterOf(it);
         if (SP.sortMode === 'story' && chNo) {
             var ct = SP.chapterTitle(chNo);
-            parts.push('剧情' + chNo + (ct ? ' ' + ct : ''));
+            parts.push('任务' + chNo + (ct ? ' ' + ct : ''));
         }
         if (it.subOf) {
             var callers = [];
@@ -1155,11 +1156,12 @@
     }
 
     SP.applyFilter();
-    console.log('[ScenePlayer] v2.3.0 已加载：公共事件 ' + SCENES.length + ' + 地图事件 '
+    console.log('[ScenePlayer] v2.4.0 已加载：公共事件 ' + SCENES.length + ' + 地图事件 '
         + MAP_SCENES.length + ' = ' + SP.items.length + ' 个'
         + '（H ' + SP.countByTag('h') + ' / 剧情 ' + SP.countByTag('story')
         + ' / 杂项 ' + SP.countByTag('misc') + '）'
         + '，已隐藏子场景 ' + SP.countSub() + ' 个'
-        + '，排序 ' + (SP.sortMode === 'story' ? '按剧情（' + SP.storyTitles.length + ' 章）' : '按 id')
+        + '，排序 ' + (SP.sortMode === 'story'
+            ? '按剧情（' + SP.storyTitles.filter(function(t) { return t; }).length + ' 个任务）' : '按 id')
         + '  | F3 排序  F4 子场景  F6 筛选  F7 列表  F8 下一个  F9 连播  F10 自动对话');
 })();

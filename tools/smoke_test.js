@@ -236,7 +236,8 @@ ok(SP.sortMode === 'story', 'F3 再按切回剧情顺序');
 const first = SP.view[0];
 const chNo = SP.chapterOf(first);
 ok(chNo === P_STORY[0][1], '首项章节号 = ' + chNo);
-ok(SP.chapterTitle(chNo).length > 0, '章节标题可取到: 「' + SP.chapterTitle(chNo) + '」');
+ok(SP.chapterTitle(chNo).length > 0 && !/^\d/.test(SP.chapterTitle(chNo)),
+   '章节标题已剥掉任务号: 「' + SP.chapterTitle(chNo) + '」（原始「' + SP.storyTitles[chNo-1] + '」）');
 ok(SP.orderOf(first) < SP.orderOf(SP.view[SP.view.length - 1]), 'orderOf 递增');
 ok(SP.orderOf({ key: '不存在的键' }) === 1000000, '未定位场景的 orderOf 排到最后');
 // 与筛选/子场景叠加
@@ -586,7 +587,7 @@ w._data = SP.view;
 w._drawn = []; w.drawItem(posSub);
 ok(w._drawn[0].t.includes('⊂子场景'), '子场景标 ⊂子场景: ' + JSON.stringify(w._drawn[0].t.trim().slice(-20)));
 ok(w._drawn[1].t.includes('⊂ 被「'), '第二行显示被谁调用: ' + JSON.stringify(w._drawn[1].t.slice(0, 34)));
-ok(w._drawn[1].t.includes('剧情'), '第二行同时带剧情章节: ' + JSON.stringify(w._drawn[1].t.slice(0, 24)));
+ok(/任务\d+/.test(w._drawn[1].t), '第二行同时带任务号: ' + JSON.stringify(w._drawn[1].t.slice(0, 26)));
 SP.showSub = true; SP.applyFilter(); w._data = SP.view;
 ok(w.itemHeight() === 72, 'itemHeight = 72（两行）');
 

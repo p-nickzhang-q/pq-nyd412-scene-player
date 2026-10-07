@@ -184,7 +184,7 @@ def build_entry(scenes, missing, existing_params=None, map_scenes=None, tags=Non
                'storyChapters': params.pop('storyChapters')}
     ordered.update(params)          # 保留用户自己加的其它键
     return {'name': PLUGIN_NAME, 'status': True,
-            'description': 'v2.3.0 场景速播器：F7 场景列表 / F8 下一个 / F9 自动连播 / F10 自动推进对话 / F3 排序 / F4 子场景',
+            'description': 'v2.4.0 场景速播器：F7 场景列表 / F8 下一个 / F9 自动连播 / F10 自动推进对话 / F3 排序 / F4 子场景',
             'parameters': ordered}
 
 
@@ -274,8 +274,9 @@ def main():
            sum(1 for v in tags.values() if v == 'misc')))
     # 注意：必须传入刚扫出来的清单，否则会读到 plugins.js 里的旧参数
     story = story_order.compute(www, scenes=scenes, map_scenes=map_scenes)
-    log('剧情顺序       : %d 个场景已定位（%d 个剧情章节），未定位 %d 个'
-        % (story['placed'], len(story['chapters']), len(story['unplaced'])))
+    nch = len([t for t in story['chapters'] if t])
+    log('剧情顺序       : %d 个场景已定位（游戏任务表 %d 个任务），未定位 %d 个'
+        % (story['placed'], nch, len(story['unplaced'])))
     if story['unplaced']:
         log('   未定位        : %s' % '、'.join(story['unplaced'][:8]))
     subs, sub_info = nesting.analyze(www, scenes, map_scenes)
