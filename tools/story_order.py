@@ -244,7 +244,7 @@ def chapter_of(tokens, idx):
     return min(hits)
 
 
-def compute(game_dir, verbose=False):
+def compute(game_dir, verbose=False, scenes=None, map_scenes=None):
     """
     返回 {'order': [[场景键, 章节号], ...], 'chapters': [标题, ...], ...}。
     order 的顺序就是剧情顺序（未定位的排在最后）。
@@ -256,11 +256,16 @@ def compute(game_dir, verbose=False):
         raise SystemExit('读不到任何任务小节（缺 Walkthroughs/*.zh.md？）')
     idx = build_index(chapters)
 
-    entries, _ = nesting.load_plugins(os.path.join(www, 'js', 'plugins.js'))
-    sp = [e for e in entries if e.get('name') == 'ScenePlayer'][0]
-    params = sp.get('parameters', {})
-    scenes = json.loads(params.get('sceneList') or '[]')
-    map_scenes = json.loads(params.get('mapScenes') or '[]')
+    if scenes is None or map_scenes is None:
+        # 没传就用 plugins.js 里现有的（注意：setup.py 必须在写入新参数**之前**传入，
+        # 否则会读到上一次的旧清单，算出多余的条目）
+        entries, _ = nesting.load_plugins(os.path.join(www, 'js', 'plugins.js'))
+        sp = [e for e in entries if e.get('name') == 'ScenePlayer'][0]
+        params = sp.get('parameters', {})
+        if scenes is None:
+            scenes = json.loads(params.get('sceneList') or '[]')
+        if map_scenes is None:
+            map_scenes = json.loads(params.get('mapScenes') or '[]')
 
     ce = json.load(open(os.path.join(www, 'data', 'CommonEvents.json'), encoding='utf-8'))
     by_id = {e['id']: e for e in ce if e}

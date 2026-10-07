@@ -272,7 +272,8 @@ def main():
         % (sum(1 for v in tags.values() if v == 'h'),
            sum(1 for v in tags.values() if v == 'story'),
            sum(1 for v in tags.values() if v == 'misc')))
-    story = story_order.compute(www)
+    # 注意：必须传入刚扫出来的清单，否则会读到 plugins.js 里的旧参数
+    story = story_order.compute(www, scenes=scenes, map_scenes=map_scenes)
     log('剧情顺序       : %d 个场景已定位（%d 个剧情章节），未定位 %d 个'
         % (story['placed'], len(story['chapters']), len(story['unplaced'])))
     if story['unplaced']:

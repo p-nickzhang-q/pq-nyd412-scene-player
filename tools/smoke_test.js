@@ -194,7 +194,8 @@ ok(!!Window_SceneListProto && !!Scene_ScenePlayerProto, '内部窗口/画面类�
 console.log('== 类型标签 ==');
 const cnt = t => SP.items.filter(i => i.tag === t).length;
 ok(SP.countByTag('h') === cnt('h') && cnt('h') > 0, 'H 标签 ' + cnt('h') + ' 个');
-ok(cnt('story') > 0 && cnt('misc') > 0, '剧情 ' + cnt('story') + ' / 杂项 ' + cnt('misc'));
+ok(cnt('story') > 0 && cnt('misc') >= 0, '剧情 ' + cnt('story') + ' / 杂项 ' + cnt('misc')
+   + (cnt('misc') ? '' : '（本作没收录地图事件时杂项为 0）'));
 ok(SP.items.every(i => ['h', 'story', 'misc'].indexOf(i.tag) >= 0), '每个场景都有合法标签');
 ok(SP.itemOf(0).key === String(P_STORY[0][0]), '首项 = 剧情顺序第一项 ' + SP.itemOf(0).key);
 
@@ -338,10 +339,9 @@ ok(SP.playing === true, 'playing = true');
 reset();
 ok(SP.play(i295) === false && reserved.length === 0, '缺素材场景被拒绝且不触发事件');
 
-console.log('== 播放地图场景（同一张地图）==');
-reset();
-const mapItem = P_MAPS[0];
-const posMap = idx('map', 'm' + mapItem[0] + ':' + mapItem[1]);
+// 地图场景相关用例共用的变量（P_MAPS 为空时也要能声明）
+const mapItem = P_MAPS[0] || [0, 0, 0, 0, '', ''];
+const posMap = P_MAPS.length ? idx('map', 'm' + mapItem[0] + ':' + mapItem[1]) : -1;
 let started = 0;
 const mkEvent = (list, starting) => {
     const ev = { isStarting: () => !!starting, start: () => { started++; } };
@@ -349,14 +349,22 @@ const mkEvent = (list, starting) => {
     ev.list = function () { return this.page().list; };      // 与 rpg_objects.js 一致
     return ev;
 };
+
+console.log('== 播放地图场景（同一张地图）==');
+if (!P_MAPS.length) {
+    ok(true, '（未收录地图事件场景，跳过地图相关用例）');
+} else {
+reset();
 fakeEvents[mapItem[1]] = mkEvent([{ code: 0 }, { code: 401 }], false);
 mapId = mapItem[0];
 ok(SP.play(posMap) === true, 'play(地图场景) = true');
 ok(started === 1, '调用了 event.start() 一次');
 ok(transferred.length === 0, '同地图不传送');
 ok(SP.playing === true && SP.pending === null, 'playing=true，无 pending');
+}
 
 console.log('== 播放地图场景（需要传送）==');
+if (P_MAPS.length) {
 reset();
 started = 0; mapId = 999;
 ok(SP.play(posMap) === true, 'play 返回 true');
@@ -373,8 +381,10 @@ SP.pendingWait = 2;
 SP.update(); SP.update(); SP.update();
 ok(SP.pending === null && SP.playing === false, '传送超时会放弃并复位');
 ok(started === 0, '超时不会触发事件');
+}
 
 console.log('== startMapEvent 边界 ==');
+if (P_MAPS.length) {
 reset(); mapId = mapItem[0];
 delete fakeEvents[mapItem[1]];
 SP.play(posMap);
@@ -410,6 +420,7 @@ started = 0; evRunning = true;
 SP.play(posMap);
 ok(started === 0, '已有事件在运行时不会重复触发');
 evRunning = false;
+}
 
 console.log('== 连播在筛选范围内 + 跳过缺素材 ==');
 reset();
@@ -559,9 +570,13 @@ w.drawItem(i295);
 ok(/\[(H|剧情|杂项)\]/.test(w._drawn[0].t), '第1行带类型标签: ' + JSON.stringify(w._drawn[0].t.trim()));
 ok(w._drawn[0].t.includes('⚠缺素材'), '缺素材标 ⚠');
 ok(w._drawn[1].t.includes('项（图/影片）'), '第2行说明缺的是图/影片: ' + JSON.stringify(w._drawn[1].t.slice(0, 30)));
-w._drawn = []; w.drawItem(posMap);
-ok(w._drawn[0].t.includes('🗺'), '地图场景带 🗺 标记: ' + JSON.stringify(w._drawn[0].t.trim()));
-ok(w._drawn[1].t.includes('Map'), '地图场景第二行显示 Map 坐标: ' + JSON.stringify(w._drawn[1].t.slice(0, 24)));
+if (P_MAPS.length) {
+    w._drawn = []; w.drawItem(posMap);
+    ok(w._drawn[0].t.includes('🗺'), '地图场景带 🗺 标记: ' + JSON.stringify(w._drawn[0].t.trim()));
+    ok(w._drawn[1].t.includes('Map'), '地图场景第二行显示 Map 坐标: ' + JSON.stringify(w._drawn[1].t.slice(0, 24)));
+} else {
+    ok(true, '（未收录地图事件场景，跳过 🗺 绘制用例）');
+}
 w._drawn = []; w.drawItem(posCE);
 ok(!w._drawn[0].t.includes('⚠'), '正常场景无 ⚠');
 // 子场景（需先显示出来才有位置）
