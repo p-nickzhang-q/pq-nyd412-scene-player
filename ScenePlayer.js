@@ -67,9 +67,9 @@
  *
  * @param sortKey
  * @text 排序切换按键(keyCode)
- * @desc 默认 114 = F3。剧情顺序 ↔ 事件 id 顺序
+ * @desc 默认 113 = F2。剧情顺序 ↔ 事件 id 顺序
  * @type number
- * @default 114
+ * @default 113
  *
  * @param storyOrder
  * @text 剧情顺序表(JSON)
@@ -199,7 +199,7 @@
     var KEY_MSG = toInt(params['msgKey'], 121);
     var KEY_FILTER = toInt(params['filterKey'], 117);   // F6
     var KEY_SUB = toInt(params['subKey'], 115);         // F4
-    var KEY_SORT = toInt(params['sortKey'], 114);       // F3
+    var KEY_SORT = toInt(params['sortKey'], 113);       // F2
     var AUTO_DELAY = toInt(params['autoDelay'], 60);
     var MSG_DELAY = toInt(params['msgDelay'], 45);
 
@@ -295,6 +295,11 @@
         } catch (e) {
             return [];
         }
+    }
+
+    // keyCode -> 显示名（112~123 是 F1~F12），帮助栏里用它显示当前实际按键
+    function keyLabel(code) {
+        return (code >= 112 && code <= 123) ? ('F' + (code - 111)) : ('#' + code);
     }
 
     var TAG_LABEL = { h: 'H', story: '剧情', misc: '杂项' };
@@ -718,7 +723,8 @@
             if (SP.items[i].key === key) {
                 var pos = SP.view.indexOf(SP.items[i]);
                 if (pos >= 0) { return SP.play(pos); }
-                SP.toast('该场景不在当前筛选范围（' + FILTER_LABEL[SP.filter] + '），先按 F6 切换');
+                SP.toast('该场景不在当前筛选范围（' + FILTER_LABEL[SP.filter] + '），先按 '
+                    + keyLabel(KEY_FILTER) + ' 切换');
                 return false;
             }
         }
@@ -1037,9 +1043,11 @@
         for (var i = 0; i < SP.view.length; i++) {
             if (!SP.canPlay(i)) { blocked++; }
         }
-        return 'F6 筛选：' + FILTER_LABEL[SP.filter] + '（' + SP.view.length + '/' + SP.items.length + ' 个）'
-            + '   F3 排序：' + (SP.sortMode === 'story' ? '剧情' : '按ID')
-            + '   F4 子场景：' + (SP.showSub ? '显示' : '隐藏') + '（共 ' + SP.countSub() + ' 个）'
+        return keyLabel(KEY_FILTER) + ' 筛选：' + FILTER_LABEL[SP.filter]
+            + '（' + SP.view.length + '/' + SP.items.length + ' 个）'
+            + '   ' + keyLabel(KEY_SORT) + ' 排序：' + (SP.sortMode === 'story' ? '剧情' : '按ID')
+            + '   ' + keyLabel(KEY_SUB) + ' 子场景：' + (SP.showSub ? '显示' : '隐藏')
+            + '（共 ' + SP.countSub() + ' 个）'
             + '   ↑↓ 选择  ←→ 跳10  PgUp/PgDn 翻页  Enter 播放  Esc 关闭'
             + (blocked ? '   ⚠ 缺素材 ' + blocked + ' 个已跳过' : '')
             + '   连播:' + (SP.auto ? '开' : '关') + ' 自动对话:' + (SP.msgAuto ? '开' : '关');
@@ -1163,5 +1171,8 @@
         + '，已隐藏子场景 ' + SP.countSub() + ' 个'
         + '，排序 ' + (SP.sortMode === 'story'
             ? '按剧情（' + SP.storyTitles.filter(function(t) { return t; }).length + ' 个任务）' : '按 id')
-        + '  | F3 排序  F4 子场景  F6 筛选  F7 列表  F8 下一个  F9 连播  F10 自动对话');
+        + '  | ' + keyLabel(KEY_SORT) + ' 排序  ' + keyLabel(KEY_SUB) + ' 子场景  '
+        + keyLabel(KEY_FILTER) + ' 筛选  ' + keyLabel(KEY_OPEN) + ' 列表  '
+        + keyLabel(KEY_NEXT) + ' 下一个  ' + keyLabel(KEY_AUTO) + ' 连播  '
+        + keyLabel(KEY_MSG) + ' 自动对话');
 })();

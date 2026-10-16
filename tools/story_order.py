@@ -523,7 +523,7 @@ def compute(game_dir, verbose=False, scenes=None, map_scenes=None):
         rows.append({'key': key, 'kind': 'map', 'id': key, 'name': name,
                      'ord_id': m[0] * 10000 + m[1], 'line': line_of(name),
                      'chapter': ch, 'evidence': ev, 'sub': m[1], 'score': best_score,
-                     'own_min': sig['own_min'], 'all_min': sig['all_min']})
+                     'own_max': sig['own_max'], 'var_max': sig['var_max']})
 
     subs, _info = nesting.analyze(www, scenes, map_scenes)
     by_key = {r['key']: r for r in rows}

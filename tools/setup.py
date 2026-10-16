@@ -47,7 +47,7 @@ DEFAULT_MODE = 'auto'
 DEFAULT_MIN_PICS = 4
 DEFAULT_KEYS = {'openKey': '118', 'nextKey': '119', 'autoKey': '120',
                 'msgKey': '121', 'autoDelay': '60', 'msgDelay': '45', 'subKey': '115',
-                'sortKey': '114'}
+                'sortKey': '113'}
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 
@@ -214,7 +214,9 @@ def main():
                     help='用扫描结果重建 unlockEvents = 场景 id − 缺素材 id（现有列表不可信时用，例如本作原始的 [2041]）')
     ap.add_argument('--no-unlock', action='store_true', help='不改 unlockEvents')
     ap.add_argument('--no-install', action='store_true', help='不复制/更新 ScenePlayer.js')
-    ap.add_argument('--no-maps', action='store_true', help='不收录地图事件场景')
+    ap.add_argument('--maps', action='store_true',
+                    help='收录地图事件场景（默认不收录：播放会真的把玩家传送走，见 README）')
+    ap.add_argument('--no-maps', action='store_true', help=argparse.SUPPRESS)  # 兼容旧写法
     ap.add_argument('--map-min-pics', type=int, default=5, help='地图事件图片数阈值（默认 5）')
     ap.add_argument('--pattern', default=DEFAULT_PATTERN, help='场景匹配正则（默认 scene）')
     ap.add_argument('--mode', choices=['scene', 'auto', 'all-pics'], default=DEFAULT_MODE,
@@ -223,6 +225,8 @@ def main():
     ap.add_argument('--min-pics', type=int, default=DEFAULT_MIN_PICS,
                     help='auto 模式下图片数达到多少张才算场景（默认 4）')
     ap.add_argument('--exclude', default=DEFAULT_EXCLUDE, help='排除的事件 id，逗号分隔')
+    ap.add_argument('--set-key', action='append', default=[], metavar='键=keyCode',
+                    help='改快捷键，可重复，如 --set-key sortKey=113（写进 plugins.js 参数）')
     ap.add_argument('--names', default=os.path.join(REPO, 'params', 'names.zh.json'),
                     help='中文名映射 JSON（默认用仓库里的 params/names.zh.json）')
     args = ap.parse_args()
@@ -250,7 +254,8 @@ def main():
 
     # --- 2. 扫描 ---
     res = scan_game.collect(data_dir, www, args.pattern, exclude, names, args.mode,
-                            args.min_pics, not args.no_maps, args.map_min_pics, (0, 1, 2))
+                            args.min_pics, (args.maps and not args.no_maps),
+                            args.map_min_pics, (0, 1, 2))
     by_id = res['by_id']
     scenes = res['scenes']
     map_scenes = res['map_scenes']
@@ -321,6 +326,16 @@ def main():
     existing, _, _ = find_entry(entries, PLUGIN_NAME)
     entry = build_entry(scenes, missing, existing['parameters'] if existing else None,
                         map_scenes, tags, subs, story)
+    for kv in args.set_key:
+        if '=' not in kv:
+            raise SystemExit('--set-key 格式应为 键=keyCode，例如 sortKey=113')
+        k, v = kv.split('=', 1)
+        k, v = k.strip(), v.strip()
+        if k not in entry['parameters']:
+            raise SystemExit('ScenePlayer 没有参数 %s（可用：%s）'
+                             % (k, ', '.join(sorted(entry['parameters']))))
+        entry['parameters'][k] = v
+        log('改快捷键       : %s = %s' % (k, v))
     entry_action = 'update' if existing else 'add'
     # 用语义比较判断是否需要写入：避免因空白/键序/description 措辞差异而反复重写
     entry_changed = (existing is None) or (existing != entry)
